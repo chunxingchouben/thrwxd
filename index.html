@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>乌鲁木齐 · 脱核作战地图</title>
+    <title>乌鲁木齐 · 脱核经营贷作战地图</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * {
@@ -28,11 +28,10 @@
 
         #map {
             flex: 1;
-            background: #e0e7f0; /* 地图底色，加载时可见 */
+            background: #e0e7f0;
             z-index: 1;
         }
 
-        /* 右侧面板 - 手机端变为下方滑板 */
         #side {
             width: 380px;
             background: #0f1923;
@@ -243,24 +242,33 @@
             text-overflow: ellipsis;
         }
 
-        .lc-phone {
-            font-size: 12px;
-            margin-top: 4px;
+        .lc-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 6px;
+            font-size: 11px;
         }
 
-        .lc-phone a {
+        .lc-actions a {
             color: #66bb6a;
             text-decoration: none;
-            font-weight: 500;
+            background: #1e3a2e;
+            padding: 3px 10px;
+            border-radius: 20px;
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            background: #1e3a2e;
-            padding: 3px 8px;
-            border-radius: 30px;
+            transition: background 0.2s;
         }
 
-        /* 图例 - 左上角，不遮挡 */
+        .lc-actions a:active {
+            background: #2a5a44;
+        }
+
+        .nav-icon {
+            font-size: 12px;
+        }
+
         #legend2 {
             position: absolute;
             top: 12px;
@@ -297,7 +305,7 @@
             color: #444;
         }
 
-        .pop-phone-link {
+        .pop-phone-link, .pop-nav-link {
             display: inline-block;
             background: #e9f5ef;
             padding: 2px 8px;
@@ -305,6 +313,7 @@
             color: #2e7d64;
             text-decoration: none;
             font-weight: bold;
+            margin-right: 6px;
         }
 
         #lead-list::-webkit-scrollbar {
@@ -333,7 +342,6 @@
             font-weight: bold;
         }
 
-        /* 手机专用响应式 - 地图占40%，列表占60% */
         @media (max-width: 780px) {
             #app {
                 flex-direction: column;
@@ -398,7 +406,7 @@
     <div id="side">
         <div id="side-header">
             <h2>🎯 乌鲁木齐 · 核心企业供应链商机 (100家)</h2>
-            <div class="meta">脱核经营贷 | 信用传导 | 移动作战</div>
+            <div class="meta">脱核经营贷 | 信用传导 | 支持高德导航</div>
         </div>
         <div id="stats">
             <div class="stat"><div class="v" id="stat-total">100</div><div class="l">商机总数</div></div>
@@ -425,7 +433,19 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     // --------------------------------------------------------------
-    // 完整100条商机数据（前15条真实示例，后续自动补全）
+    // 高德地图导航函数 (自动唤起App或打开网页)
+    // --------------------------------------------------------------
+    function navigateToAmap(lat, lng, name) {
+        if (!lat || !lng) return;
+        // 编码名称用于URL
+        const encodedName = encodeURIComponent(name || '目标位置');
+        // 使用高德官方 URI 方案：自动判断设备，优先唤起APP，否则打开网页
+        const url = `https://uri.amap.com/navigation?to=${lng},${lat}&toName=${encodedName}&mode=car&callnative=1`;
+        window.location.href = url;
+    }
+
+    // --------------------------------------------------------------
+    // 完整100条商机数据
     // --------------------------------------------------------------
     const BASE_LEADS = [
         {
@@ -2430,7 +2450,7 @@
 }
     ];
 
-    // 补全至100条 (确保每个商机都有电话和坐标)
+    // 补全100条数据
     let allLeads = [...BASE_LEADS];
     const TARGET = 100;
     if(allLeads.length < TARGET) {
@@ -2451,33 +2471,26 @@
     }
     const finalLeads = allLeads.slice(0,100).sort((a,b)=>a.rank-b.rank);
     
-    // 初始化地图 (使用稳定、高可用的CartoDB Voyager地图，真实感强，手机兼容性好)
+    // --------------------------------------------------------------
+    // 地图初始化 (真实地图)
+    // --------------------------------------------------------------
     const map = L.map('map').setView([43.87, 87.60], 11);
-    // 真实地图瓦片源：CartoDB Voyager (无标注/明亮风格，全世界加载迅速)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB',
         subdomains: 'abcd',
         maxZoom: 18,
         minZoom: 9
     }).addTo(map);
-    // 备用: 如果上面加载慢，可启用以下标准OSM作为后备（无需额外代码，已能显示）
     
-    // 移动端缩放按钮位置适配
-    if(window.innerWidth <= 780) {
-        map.zoomControl.setPosition('bottomright');
-    }
-    
-    // 强制地图在手机布局稳定后刷新尺寸 (关键修复手机空白)
-    setTimeout(() => {
-        map.invalidateSize();
-    }, 100);
+    if(window.innerWidth <= 780) map.zoomControl.setPosition('bottomright');
+    setTimeout(() => map.invalidateSize(), 100);
     window.addEventListener('resize', () => {
         map.invalidateSize();
         if(window.innerWidth <= 780) map.zoomControl.setPosition('bottomright');
         else map.zoomControl.setPosition('topleft');
     });
     
-    // 区域多边形（淡化）
+    // 区域多边形
     const districtsPoly = {
         "头屯河": [[43.92,87.38],[43.95,87.42],[43.95,87.53],[43.90,87.54],[43.88,87.50],[43.85,87.46],[43.86,87.40],[43.89,87.37]],
         "新市区": [[43.92,87.50],[43.93,87.58],[43.90,87.63],[43.87,87.64],[43.83,87.60],[43.83,87.55],[43.87,87.51],[43.90,87.49]],
@@ -2487,7 +2500,7 @@
         L.polygon(coords, {color:"#3388ff", weight:1.2, fillOpacity:0.08, fillColor:"#3388ff"}).addTo(map).bindTooltip(name+"片区");
     }
     
-    // 产业集群虚线圈
+    // 产业集群
     const clusters = [
         {name:"风电装备集群",lat:43.88,lng:87.43,radius:6000},
         {name:"石油化工集群",lat:43.99,lng:87.70,radius:5000},
@@ -2511,6 +2524,7 @@
     let markers = [];
     function buildPopupHtml(lead) {
         const starIcon = lead.star ? '⭐' : '';
+        const navLink = `<a href="javascript:void(0)" onclick="navigateToAmap(${lead.lat}, ${lead.lng}, '${lead.name.replace(/'/g, "\\'")}')" class="pop-nav-link">🗺️ 导航</a>`;
         return `<div style="min-width:220px;">
             <h4>${starIcon} ${lead.name}</h4>
             <div class="pop-row"><strong>排名：</strong>#${lead.rank} | <strong>总分：</strong>${lead.total}分</div>
@@ -2520,6 +2534,7 @@
             <div class="pop-row"><strong>🏭 核心企业：</strong>${lead.core_enterprise}</div>
             <div class="pop-row"><strong>🔗 绑定：</strong>${lead.binding}</div>
             <div class="pop-row"><strong>📦 产品：</strong>${lead.product}</div>
+            <div class="pop-row" style="margin-top:5px;">${navLink}</div>
             <div style="font-size:10px;margin-top:5px;">基于核心企业信用的脱核经营贷，快速审批。</div>
         </div>`;
     }
@@ -2533,7 +2548,7 @@
         markers.push(m);
     });
     
-    // 列表及筛选
+    // 列表渲染及筛选 (增加导航按钮)
     let currentDistrict = '全部';
     function renderLeadList() {
         const searchTerm = document.getElementById('search').value.toLowerCase();
@@ -2557,7 +2572,10 @@
                 <div class="lc-top"><div class="lc-name">#${l.rank} ${l.name}</div><div class="lc-badges">${starBadge}${priBadge}${willBadge}</div></div>
                 <div class="lc-info"><span>🏭 ${l.industry}</span><span>💰 ${l.capital}万</span><span>📊 ${l.total}分</span></div>
                 <div class="lc-core">⭐ 核心企业：${l.core_enterprise}</div>
-                <div class="lc-phone"><a href="tel:${l.phone}" onclick="event.stopPropagation()">📞 ${l.phone}</a></div>
+                <div class="lc-actions">
+                    <a href="tel:${l.phone}" onclick="event.stopPropagation()">📞 拨号</a>
+                    <a href="javascript:void(0)" onclick="event.stopPropagation(); navigateToAmap(${l.lat}, ${l.lng}, '${l.name.replace(/'/g, "\\'")}')">🗺️ 导航</a>
+                </div>
             </div>`;
         }).join('');
     }
@@ -2586,12 +2604,9 @@
     renderLeadList();
     updateStats();
     
-    // 确保手机端地图再次刷新（针对某些浏览器延迟渲染）
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => map.invalidateSize(), 200);
-    });
-    // 触摸或点击时也刷新一次（解决部分WebView问题）
-    map.on('click', () => { map.invalidateSize(); });
+    // 确保手机端地图再次刷新
+    document.addEventListener('DOMContentLoaded', () => setTimeout(() => map.invalidateSize(), 200));
+    map.on('click', () => map.invalidateSize());
 </script>
 </body>
 </html>
