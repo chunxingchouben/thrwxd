@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>乌鲁木齐 · 脱核经营贷作战地图</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: #0d1b2a; overflow: hidden; height: 100vh; width: 100vw; }
+        #app { display: flex; height: 100%; width: 100%; }
+        #map { flex: 1; background: #e0e7f0; z-index: 1; }
+        #side { width: 380px; background: #0f1923; color: #c8d6e5; display: flex; flex-direction: column; border-left: 1px solid #1e3044; overflow: hidden; box-shadow: -4px 0 20px rgba(0,0,0,0.5); }
+        #side-header { background: linear-gradient(135deg,#0d2137,#0f1923); padding: 10px 14px; border-bottom: 1px solid #1e3044; display: flex; justify-content: space-between; align-items: center; }
+        #side-header h2 { font-size: 15px; color: #4fc3f7; margin-bottom: 2px; }
+        .logout-btn { background: #1e3a2e; border: none; color: #8bc34a; padding: 5px 12px; border-radius: 30px; font-size: 11px; cursor: pointer; font-weight: bold; }
+        #stats { display: flex; gap: 6px; padding: 8px 10px; background: #0a1623; border-bottom: 1px solid #1e3044; flex-wrap: wrap; }
+        .stat { flex: 1; min-width: 68px; text-align: center; padding: 6px 2px; background: #112233; border-radius: 8px; }
+        .stat .v { font-size: 17px; font-weight: bold; color: #4fc3f7; }
+        .stat .l { font-size: 10px; color: #7a9bb5; margin-top: 2px; }
+        #filters { display: flex; gap: 6px; padding: 8px 10px; background: #0a1623; border-bottom: 1px solid #1e3044; flex-wrap: wrap; align-items: center; }
+        #filters input { flex: 2; min-width: 120px; background: #112233; border: 1px solid #1e3044; color: #c8d6e5; padding: 8px 10px; border-radius: 30px; font-size: 13px; outline: none; }
+        .filter-btn { padding: 6px 14px; border-radius: 30px; border: 1px solid #1e3044; background: #112233; color: #8ba9c4; font-size: 12px; cursor: pointer; white-space: nowrap; }
+        .filter-btn.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+        #lead-list { flex: 1; overflow-y: auto; padding: 6px 6px 20px 6px; }
+        .lead-card { padding: 10px 12px; margin: 6px 0; background: #112233; border-radius: 12px; border-left: 3px solid #4fc3f7; cursor: pointer; }
+        .lead-card.S { border-left-color: #e53935; }
+        .lead-card.A { border-left-color: #ffa726; }
+        .lc-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .lc-name { font-weight: bold; color: #e0e0e0; font-size: 13px; }
+        .lc-badges { display: flex; gap: 4px; }
+        .lc-badge { padding: 2px 6px; border-radius: 20px; font-size: 9px; font-weight: bold; }
+        .badge-star { background: #fff3e0; color: #e65100; }
+        .badge-s { background: #e5393533; color: #e53935; }
+        .badge-a { background: #ffa72633; color: #ffa726; }
+        .badge-strong { background: #4caf5033; color: #66bb6a; }
+        .badge-mid { background: #ffa72633; color: #ffa726; }
+        .lc-info { display: flex; gap: 8px; font-size: 10px; color: #8ba9c4; margin: 4px 0; }
+        .lc-core { font-size: 11px; color: #4fc3f7; }
+        .lc-actions { display: flex; gap: 12px; margin-top: 6px; }
+        .lc-actions a { color: #66bb6a; text-decoration: none; background: #1e3a2e; padding: 3px 10px; border-radius: 20px; font-size: 11px; }
+        #legend2 { position: absolute; bottom: 15px; left: 12px; background: #0f1923dd; backdrop-filter: blur(8px); padding: 5px 10px; border-radius: 12px; color: #c8d6e5; font-size: 10px; z-index: 1000; pointer-events: none; }
+        .leaflet-popup-content { font-size: 12px; min-width: 240px; }
+        .pop-phone-link, .pop-nav-link { display: inline-block; background: #e9f5ef; padding: 2px 8px; border-radius: 20px; margin-right: 6px; text-decoration: none; color: #2e7d64; }
+        #online-badge { position: absolute; top: 12px; right: 12px; background: #1e3a2ecc; backdrop-filter: blur(4px); color: #8bc34a; padding: 4px 10px; border-radius: 20px; font-size: 10px; z-index: 1001; pointer-events: none; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; display: flex; justify-content: center; align-items: center; color: white; font-size: 18px; backdrop-filter: blur(8px); }
+        @media (max-width: 780px) { #app { flex-direction: column; } #map { height: 40vh; min-height: 240px; } #side { width: 100%; height: 60vh; border-top: 2px solid #1e3044; } }
+    </style>
+</head>
+<body>
+<div id="app" style="display: none;">
+    <div id="map"></div>
+    <div id="online-badge">🗺️ 真实地图 · 一键导航</div>
+    <div id="side">
+        <div id="side-header">
+            <div><h2>🎯 乌鲁木齐 · 核心企业供应链商机</h2><div class="meta">脱核经营贷 | 信用传导</div></div>
+            <button id="logoutBtn" class="logout-btn">🚪 退出</button>
+        </div>
+        <div id="stats">
+            <div class="stat"><div class="v" id="stat-total">0</div><div class="l">商机总数</div></div>
+            <div class="stat"><div class="v" id="stat-s">0</div><div class="l">S级</div></div>
+            <div class="stat"><div class="v" id="stat-star">0</div><div class="l">⭐背书</div></div>
+            <div class="stat"><div class="v" id="stat-strong">0</div><div class="l">强意愿</div></div>
+            <div class="stat"><div class="v" id="stat-avg">0</div><div class="l">平均分</div></div>
+        </div>
+        <div id="filters">
+            <input type="text" id="search" placeholder="🔍 搜索企业名/核心企业/产品" oninput="filterLeads()">
+            <button class="filter-btn active" onclick="setDistrict('全部',this)">全部</button>
+            <button class="filter-btn" onclick="setDistrict('米东',this)">米东</button>
+            <button class="filter-btn" onclick="setDistrict('头屯河',this)">头屯河</button>
+            <button class="filter-btn" onclick="setDistrict('新市区',this)">新市区</button>
+        </div>
+        <div id="lead-count">加载数据中...</div>
+        <div id="lead-list"></div>
+    </div>
+</div>
+<div id="legend2" style="display: none;">📊 图例 🔴S级 🟠A级 ⭐背书 ❤️强意愿 ▫️产业集群</div>
+<div id="loadingIndicator" class="loading-overlay">📡 正在加载商机数据...</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // ---------- 登录校验 ----------
+    const currentUser = localStorage.getItem("trade_map_currentUser");
+    if (!currentUser) {
+        window.location.href = "login.html";
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem("trade_map_currentUser");
+        window.location.href = "login.html";
+    });
+
+    // ---------- 全局变量 ----------
+    let map, markers = [], allLeads = [];
+    let currentDistrict = '全部';
+
+    // ---------- 高德导航 ----------
+    function navigateToAmap(lat, lng, name) {
+        if (!lat || !lng) return;
+        const encodedName = encodeURIComponent(name || '目标位置');
+        window.location.href = `https://uri.amap.com/navigation?to=${lng},${lat}&toName=${encodedName}&mode=car&callnative=1`;
+    }
+
+    // ---------- 构建弹窗 ----------
+    function buildPopupHtml(lead) {
+        const starIcon = lead.star ? '⭐' : '';
+        return `<div style="min-width:220px;">
+            <h4>${starIcon} ${lead.name}</h4>
+            <div class="pop-row"><strong>排名：</strong>#${lead.rank} | <strong>总分：</strong>${lead.total}分</div>
+            <div class="pop-row"><strong>优先级：</strong>${lead.priority} | <strong>意愿度：</strong>${lead.willingness}</div>
+            <div class="pop-row"><strong>📱 手机：</strong> <a href="tel:${lead.phone}" class="pop-phone-link">${lead.phone}</a></div>
+            <div class="pop-row"><strong>📍 地址：</strong>${lead.address}</div>
+            <div class="pop-row"><strong>🏭 核心企业：</strong>${lead.core_enterprise}</div>
+            <div class="pop-row"><strong>🔗 绑定：</strong>${lead.binding}</div>
+            <div class="pop-row"><strong>📦 产品：</strong>${lead.product}</div>
+            <div class="pop-row"><a href="javascript:void(0)" onclick="navigateToAmap(${lead.lat}, ${lead.lng}, '${lead.name.replace(/'/g, "\\'")}')" class="pop-nav-link">🗺️ 高德导航</a></div>
+        </div>`;
+    }
+
+    // ---------- 渲染地图标记 ----------
+    function renderMarkers(leads) {
+        if (markers.length) {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+        }
+        leads.forEach(lead => {
+            const color = lead.priority === 'S级' ? '#e53935' : '#ffa726';
+            const radius = lead.priority === 'S级' ? 8 : 6;
+            const m = L.circleMarker([lead.lat, lead.lng], {radius, color, fillColor:color, fillOpacity:0.7, weight: lead.star ? 2 : 1});
+            m.bindPopup(buildPopupHtml(lead));
+            m._leadData = lead;
+            m.addTo(map);
+            markers.push(m);
+        });
+    }
+
+    // ---------- 渲染列表 ----------
+    function renderLeadList() {
+        const searchTerm = document.getElementById('search').value.toLowerCase();
+        let filtered = allLeads.filter(l => currentDistrict === '全部' || l.district === currentDistrict);
+        if (searchTerm) {
+            filtered = filtered.filter(l => l.name.toLowerCase().includes(searchTerm) || l.core_enterprise.toLowerCase().includes(searchTerm) || l.product.toLowerCase().includes(searchTerm) || l.industry.toLowerCase().includes(searchTerm));
+        }
+        document.getElementById('lead-count').textContent = `显示 ${filtered.length} 条商机`;
+        // 更新地图标记可见性
+        markers.forEach(m => {
+            const lead = m._leadData;
+            let visible = (currentDistrict === '全部' || lead.district === currentDistrict);
+            if (visible && searchTerm) visible = lead.name.toLowerCase().includes(searchTerm) || lead.core_enterprise.toLowerCase().includes(searchTerm) || lead.product.toLowerCase().includes(searchTerm) || lead.industry.toLowerCase().includes(searchTerm);
+            if (visible) { if (!map.hasLayer(m)) m.addTo(map); } else { if (map.hasLayer(m)) map.removeLayer(m); }
+        });
+        const container = document.getElementById('lead-list');
+        container.innerHTML = filtered.map(l => {
+            const starBadge = l.star ? '<span class="lc-badge badge-star">⭐背书</span>' : '';
+            const priBadge = l.priority === 'S级' ? '<span class="lc-badge badge-s">S级</span>' : '<span class="lc-badge badge-a">A级</span>';
+            const willBadge = l.willingness === '强' ? '<span class="lc-badge badge-strong">强意愿</span>' : '<span class="lc-badge badge-mid">中意愿</span>';
+            return `<div class="lead-card ${l.priority === 'S级' ? 'S' : 'A'}" onclick="flyToLead(${l.lat},${l.lng},'${l.name.replace(/'/g,"\\'")}')">
+                <div class="lc-top"><div class="lc-name">#${l.rank} ${l.name}</div><div class="lc-badges">${starBadge}${priBadge}${willBadge}</div></div>
+                <div class="lc-info"><span>🏭 ${l.industry}</span><span>💰 ${l.capital}万</span><span>📊 ${l.total}分</span></div>
+                <div class="lc-core">⭐ 核心企业：${l.core_enterprise}</div>
+                <div class="lc-actions">
+                    <a href="tel:${l.phone}" onclick="event.stopPropagation()">📞 拨号</a>
+                    <a href="javascript:void(0)" onclick="event.stopPropagation(); navigateToAmap(${l.lat}, ${l.lng}, '${l.name.replace(/'/g, "\\'")}')">🗺️ 导航</a>
+                </div>
+            </div>`;
+        }).join('');
+        updateStats(filtered);
+    }
+
+    function updateStats(filtered) {
+        document.getElementById('stat-total').innerText = filtered.length;
+        document.getElementById('stat-s').innerText = filtered.filter(l=>l.priority==='S级').length;
+        document.getElementById('stat-star').innerText = filtered.filter(l=>l.star).length;
+        document.getElementById('stat-strong').innerText = filtered.filter(l=>l.willingness==='强').length;
+        let avg = filtered.length ? Math.round(filtered.reduce((s,l)=>s+l.total,0)/filtered.length) : 0;
+        document.getElementById('stat-avg').innerText = avg;
+    }
+
+    window.flyToLead = function(lat, lng, name) {
+        map.flyTo([lat, lng], 14, {duration:0.6});
+        setTimeout(() => markers.forEach(m => { if(m._leadData.name === name) m.openPopup(); }), 700);
+    };
+    window.filterLeads = function() { renderLeadList(); };
+    window.setDistrict = function(d, btn) {
+        currentDistrict = d;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterLeads();
+    };
+
+    // ---------- 初始化地图（先创建空地图，数据加载后填充）----------
+    function initMap() {
+        map = L.map('map').setView([43.87, 87.60], 11);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 18,
+            minZoom: 9
+        }).addTo(map);
+        if(window.innerWidth <= 780) map.zoomControl.setPosition('bottomright');
+        window.addEventListener('resize', () => map.invalidateSize());
+        // 添加静态底图要素（区域、产业集群、核心企业）
+        const districtsPoly = {
+            "头屯河": [[43.92,87.38],[43.95,87.42],[43.95,87.53],[43.90,87.54],[43.88,87.50],[43.85,87.46],[43.86,87.40],[43.89,87.37]],
+            "新市区": [[43.92,87.50],[43.93,87.58],[43.90,87.63],[43.87,87.64],[43.83,87.60],[43.83,87.55],[43.87,87.51],[43.90,87.49]],
+            "米东": [[43.98,87.55],[44.05,87.58],[44.08,87.68],[44.05,87.78],[43.98,87.79],[43.92,87.76],[43.90,87.68],[43.94,87.57]]
+        };
+        for(let [name,coords] of Object.entries(districtsPoly)) {
+            L.polygon(coords, {color:"#3388ff", weight:1.2, fillOpacity:0.08, fillColor:"#3388ff"}).addTo(map).bindTooltip(name+"片区");
+        }
+        const clusters = [
+            {name:"风电装备集群",lat:43.88,lng:87.43,radius:6000},
+            {name:"石油化工集群",lat:43.99,lng:87.70,radius:5000},
+            {name:"电力装备集群",lat:43.87,lng:87.56,radius:4500}
+        ];
+        clusters.forEach(c => {
+            L.circle([c.lat,c.lng], {radius:c.radius, color:"#f47738", weight:1.5, dashArray:'5 5', fill:false}).addTo(map).bindTooltip(c.name);
+        });
+        const coreFirms = [
+            {name:"金风科技",lat:43.88,lng:87.43},{name:"八一钢铁",lat:43.89,lng:87.42},
+            {name:"特变电工",lat:43.88,lng:87.55},{name:"中石油乌石化",lat:43.99,lng:87.69},
+            {name:"中泰化学",lat:43.80,lng:87.58}
+        ];
+        coreFirms.forEach(f => {
+            L.circleMarker([f.lat,f.lng], {radius:8, color:"#d95f02", fillColor:"#d95f02", fillOpacity:0.8, weight:2}).addTo(map).bindPopup(`<b>${f.name}</b><br>核心企业`);
+        });
+    }
+
+    // ---------- 加载外部JSON数据 ----------
+    async function loadData() {
+        try {
+            const response = await fetch('data/opportunities.json');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            if (!data || !data.leads || !Array.isArray(data.leads)) throw new Error('数据格式错误');
+            allLeads = data.leads;
+            // 数据加载完成后，隐藏loading，显示app
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('app').style.display = 'flex';
+            document.getElementById('legend2').style.display = 'block';
+            // 初始化地图（如果尚未初始化）
+            if (!map) initMap();
+            // 渲染标记和列表
+            renderMarkers(allLeads);
+            renderLeadList();
+        } catch (err) {
+            console.error(err);
+            document.getElementById('loadingIndicator').innerHTML = '❌ 数据加载失败，请刷新重试<br><small>' + err.message + '</small>';
+        }
+    }
+
+    // 开始加载数据
+    loadData();
+</script>
+</body>
+</html>
