@@ -21,7 +21,7 @@
         .error-msg { color: #e53935; font-size: 12px; margin-top: 12px; min-height: 30px; }
         .info-note { font-size: 11px; color: #7a9bb5; margin-top: 20px; }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="auth-card">
@@ -44,14 +44,16 @@
         <button class="auth-btn" id="doRegisterBtn">注 册</button>
         <div id="regError" class="error-msg"></div>
     </div>
+    <div class="info-note">🔐 普通邀请码：XJ2026 &nbsp;&nbsp; 超级邀请码：SUPER2026</div>
 </div>
 <script>
+    // ==================== Supabase 配置 ====================
+    const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
+    const supabase = supabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const NORMAL_INVITE = "XJ2026";
     const SUPER_INVITE = "SUPER2026";
-    function hashPassword(pwd) { return CryptoJS.SHA256(pwd).toString(); }
-
-    let users = JSON.parse(localStorage.getItem("trade_map_users")) || [];
-    function saveUsers() { localStorage.setItem("trade_map_users", JSON.stringify(users)); }
 
     // UI 切换
     const loginFormDiv = document.getElementById('loginForm');
@@ -64,8 +66,13 @@
     loginTab.addEventListener('click', showLogin);
     registerTab.addEventListener('click', showRegister);
 
+    // 辅助函数：将普通用户名转换为 email 格式（唯一且合法）
+    function toEmail(username) {
+        return username.toLowerCase().replace(/[^a-z0-9]/g, '') + '@trade.local';
+    }
+
     // 注册
-    document.getElementById('doRegisterBtn').addEventListener('click', () => {
+    document.getElementById('doRegisterBtn').addEventListener('click', async () => {
         const username = document.getElementById('regUsername').value.trim();
         const password = document.getElementById('regPassword').value.trim();
         const invite = document.getElementById('regInviteCode').value.trim();
@@ -75,10 +82,17 @@
         if (invite === NORMAL_INVITE) role = 'normal';
         else if (invite === SUPER_INVITE) role = 'super';
         else { errorDiv.innerText = '邀请码错误'; return; }
-        if (users.find(u => u.username === username)) { errorDiv.innerText = '用户名已存在'; return; }
-        const passwordHash = hashPassword(password);
-        users.push({ username, passwordHash, role });
-        saveUsers();
+        const email = toEmail(username);
+        const { data, error } = await supabase.auth.signUp({
+            email: email,
+            password: password,
+            options: { data: { role: role } }
+        });
+        if (error) {
+            if (error.message.includes('already registered')) errorDiv.innerText = '用户名已存在';
+            else errorDiv.innerText = error.message;
+            return;
+        }
         errorDiv.innerText = '注册成功！请登录';
         document.getElementById('regUsername').value = '';
         document.getElementById('regPassword').value = '';
@@ -87,24 +101,34 @@
     });
 
     // 登录
-    document.getElementById('doLoginBtn').addEventListener('click', () => {
+    document.getElementById('doLoginBtn').addEventListener('click', async () => {
         const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
         const errorDiv = document.getElementById('loginError');
         if (!username || !password) { errorDiv.innerText = '请输入用户名和密码'; return; }
-        const user = users.find(u => u.username === username);
-        if (!user) { errorDiv.innerText = '用户名或密码错误'; return; }
-        const inputHash = hashPassword(password);
-        if (inputHash !== user.passwordHash) { errorDiv.innerText = '用户名或密码错误'; return; }
-        localStorage.setItem("trade_map_currentUser", username);
-        localStorage.setItem("trade_map_userRole", user.role);
-        window.location.href = "map.html";
+        const email = toEmail(username);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { errorDiv.innerText = '用户名或密码错误'; return; }
+        // 获取用户角色
+        const { data: roleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', data.user.id)
+            .single();
+        const role = roleData?.role || 'normal';
+        localStorage.setItem('trade_map_currentUser', username);
+        localStorage.setItem('trade_map_userRole', role);
+        localStorage.setItem('trade_map_userId', data.user.id);
+        window.location.href = 'map.html';
     });
 
     // 已登录直接跳转
-    if (localStorage.getItem("trade_map_currentUser")) {
-        window.location.href = "map.html";
-    }
+    (async () => {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+            window.location.href = 'map.html';
+        }
+    })();
 </script>
 </body>
 </html>
