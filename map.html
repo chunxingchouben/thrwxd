@@ -26,7 +26,6 @@
             width: 100%;
         }
 
-        /* 左侧地图区域 - 移动端保证真实地图可视且比例合适 */
         #map {
             flex: 1;
             background: #cbd5e1;
@@ -34,7 +33,6 @@
             min-height: 0;
         }
 
-        /* 右侧侧边栏 */
         #side {
             width: 420px;
             background: #0f1923;
@@ -48,7 +46,7 @@
 
         #side-header {
             background: linear-gradient(135deg, #0d2137, #0f1923);
-            padding: 10px 14px;
+            padding: 8px 12px;
             border-bottom: 1px solid #1e3044;
             display: flex;
             justify-content: space-between;
@@ -57,18 +55,21 @@
         }
 
         #side-header h2 {
-            font-size: 15px;
+            font-size: 14px;
             color: #4fc3f7;
             margin-bottom: 2px;
         }
-
+        .meta {
+            font-size: 9px;
+            color: #6c8fb3;
+        }
         .logout-btn {
             background: #1e3a2e;
             border: none;
             color: #8bc34a;
-            padding: 5px 12px;
+            padding: 4px 10px;
             border-radius: 30px;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
             font-weight: bold;
         }
@@ -76,288 +77,242 @@
         /* 紧凑统计栏 */
         #stats {
             display: flex;
-            gap: 6px;
-            padding: 8px 10px;
+            gap: 5px;
+            padding: 6px 8px;
             background: #0a1623;
             border-bottom: 1px solid #1e3044;
             flex-wrap: wrap;
             flex-shrink: 0;
         }
-
         .stat {
             flex: 1;
-            min-width: 68px;
+            min-width: 58px;
             text-align: center;
-            padding: 6px 2px;
+            padding: 4px 2px;
             background: #112233;
             border-radius: 8px;
         }
-
         .stat .v {
-            font-size: 17px;
+            font-size: 14px;
             font-weight: bold;
             color: #4fc3f7;
         }
-
         .stat .l {
-            font-size: 10px;
+            font-size: 9px;
             color: #7a9bb5;
-            margin-top: 2px;
         }
-
         .stat.today-remind {
             background: #2a3a2e;
         }
 
-        /* 筛选栏基础样式 */
+        /* 筛选栏 更紧凑 */
         #filters {
             display: flex;
             gap: 6px;
-            padding: 8px 10px;
+            padding: 6px 8px;
             background: #0a1623;
             border-bottom: 1px solid #1e3044;
             flex-wrap: wrap;
             align-items: center;
             flex-shrink: 0;
         }
-
         #filters input {
             flex: 2;
             min-width: 120px;
             background: #112233;
             border: 1px solid #1e3044;
             color: #c8d6e5;
-            padding: 8px 10px;
+            padding: 6px 10px;
             border-radius: 30px;
-            font-size: 13px;
+            font-size: 12px;
             outline: none;
         }
-
         .export-btn {
             background: #1e3a2e;
             border: none;
             color: #8bc34a;
-            padding: 5px 12px;
+            padding: 4px 10px;
             border-radius: 30px;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
-            margin-left: 8px;
         }
 
-        /* 行业筛选 - 窄高度，可上下滚动，最多显示两行 */
-        .industry-filter {
+        /* 行业筛选 / 状态筛选 滚动两行高度更紧凑 */
+        .industry-filter, .status-filter {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
-            margin: 6px 10px;
-            max-height: 70px;
+            margin: 4px 8px;
+            max-height: 60px;
             overflow-y: auto;
             align-items: center;
             flex-shrink: 0;
-            padding: 4px 2px;
+            padding: 3px 2px;
             scrollbar-width: thin;
         }
-
-        .industry-filter-item {
-            padding: 4px 12px;
-            border-radius: 40px;
+        .industry-filter-item, .status-filter-item {
+            padding: 3px 10px;
+            border-radius: 30px;
             background: #112233;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 10px;
             white-space: nowrap;
-            transition: all 0.1s;
+            transition: 0.1s;
         }
-
-        .industry-filter-item.active {
+        .industry-filter-item.active, .status-filter-item.active {
             background: #1a73e8;
             color: white;
         }
-
-        /* 视觉分割线 */
         .filter-divider {
-            margin: 4px 10px;
+            margin: 2px 8px;
             height: 1px;
             background: #2a4055;
-            opacity: 0.8;
             flex-shrink: 0;
         }
 
-        /* 状态筛选 - 同样可滚动两行高度，点击标蓝 */
-        .status-filter {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 0px 10px 8px 10px;
-            max-height: 70px;
-            overflow-y: auto;
-            align-items: center;
-            flex-shrink: 0;
-            padding: 4px 2px;
-            scrollbar-width: thin;
-        }
-
-        .status-filter-item {
-            padding: 4px 12px;
-            border-radius: 40px;
-            background: #112233;
-            cursor: pointer;
-            font-size: 11px;
-            white-space: nowrap;
-            transition: all 0.1s;
-        }
-
-        .status-filter-item.active {
-            background: #1a73e8;
-            color: white;
-        }
-
-        /* 商机列表区域 */
+        /* 商机列表区域 - 极致紧凑，保证手机屏幕可见至少2条完整卡片 */
         #lead-list {
             flex: 1;
             overflow-y: auto;
-            padding: 6px 8px 12px 8px;
+            padding: 5px 8px 10px 8px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
-        /* 卡片基础样式 */
+        /* 卡片样式：减少留白，合并信息行 */
         .lead-card {
-            padding: 8px 10px;
+            padding: 6px 8px;
             background: #112233;
-            border-radius: 14px;
+            border-radius: 12px;
             border-left: 3px solid #4fc3f7;
             cursor: pointer;
-            transition: all 0.1s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            transition: 0.05s linear;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
-
         .lead-card.S {
             border-left-color: #e53935;
         }
-
         .lead-card.A {
             border-left-color: #ffa726;
         }
-
+        /* 第一行：排名+名称+徽章 紧凑 */
         .lc-top {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 2px;
-            align-items: baseline;
+            align-items: center;
             flex-wrap: wrap;
-            gap: 4px;
+            gap: 3px;
+            margin-bottom: 2px;
         }
-
         .lc-name {
-            font-weight: bold;
-            color: #e0e0e0;
+            font-weight: 700;
             font-size: 12px;
+            color: #e0e0e0;
             letter-spacing: 0.2px;
         }
-
         .lc-badges {
             display: flex;
-            gap: 4px;
+            gap: 3px;
             flex-wrap: wrap;
         }
-
         .lc-badge {
-            padding: 2px 5px;
+            padding: 1px 5px;
             border-radius: 20px;
-            font-size: 8px;
+            font-size: 7px;
             font-weight: bold;
         }
-
         .badge-star {
             background: #fff3e0;
             color: #e65100;
         }
-
         .badge-s {
             background: #e5393533;
             color: #e53935;
         }
-
         .badge-a {
             background: #ffa72633;
             color: #ffa726;
         }
-
         .badge-strong {
             background: #4caf5033;
             color: #66bb6a;
         }
-
         .badge-mid {
             background: #ffa72633;
             color: #ffa726;
         }
 
-        .lc-info {
+        /* 第二行：行业/资本/总分/核心企业 超紧凑 */
+        .lc-info-row {
             display: flex;
-            gap: 8px;
+            flex-wrap: wrap;
+            gap: 6px;
             font-size: 9px;
             color: #8ba9c4;
-            margin: 2px 0 1px 0;
-            flex-wrap: wrap;
+            margin: 2px 0 2px 0;
+            align-items: baseline;
+        }
+        .lc-info-row span {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .core-enterprise {
+            color: #ffd966;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .lc-core {
-            font-size: 10px;
-            color: #4fc3f7;
-            margin: 1px 0;
-            word-break: break-word;
-        }
-
+        /* 操作栏: 电话&导航 极简按钮 */
         .lc-actions {
             display: flex;
             gap: 8px;
-            margin-top: 4px;
+            margin: 4px 0 3px;
         }
-
         .lc-actions a {
-            color: #66bb6a;
-            text-decoration: none;
             background: #1e3a2e;
-            padding: 2px 8px;
+            color: #8bc34a;
+            text-decoration: none;
+            padding: 2px 6px;
             border-radius: 20px;
-            font-size: 10px;
+            font-size: 9px;
             cursor: pointer;
             display: inline-block;
         }
 
+        /* 跟进控件区域 超紧凑 */
         .lc-followup {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 5px;
+            gap: 5px;
+            margin-top: 4px;
             align-items: center;
         }
-
         .status-select {
             background: #0a1623;
             color: #c8d6e5;
             border: 1px solid #2a4055;
             border-radius: 20px;
-            padding: 3px 6px;
-            font-size: 10px;
+            padding: 2px 6px;
+            font-size: 9px;
+            width: auto;
         }
-
-        .remark-btn,
-        .remind-btn {
+        .remark-btn, .remind-btn {
             background: #1e3a2e;
             border: none;
             color: #8bc34a;
             border-radius: 20px;
-            padding: 3px 8px;
-            font-size: 10px;
+            padding: 2px 8px;
+            font-size: 9px;
             cursor: pointer;
         }
 
         #lead-count {
-            font-size: 11px;
-            padding: 2px 12px 4px;
+            font-size: 9px;
+            padding: 2px 10px 2px;
             color: #7a9bb5;
             flex-shrink: 0;
         }
@@ -368,21 +323,20 @@
             left: 12px;
             background: #0f1923dd;
             backdrop-filter: blur(8px);
-            padding: 5px 10px;
+            padding: 3px 8px;
             border-radius: 12px;
             color: #c8d6e5;
-            font-size: 10px;
+            font-size: 9px;
             z-index: 1000;
             pointer-events: none;
         }
 
         .leaflet-popup-content {
             font-size: 12px;
-            min-width: 220px;
+            min-width: 200px;
         }
 
-        .pop-phone-link,
-        .pop-nav-link {
+        .pop-phone-link, .pop-nav-link {
             display: inline-block;
             background: #e9f5ef;
             padding: 2px 8px;
@@ -405,73 +359,66 @@
             justify-content: center;
             align-items: center;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             backdrop-filter: blur(8px);
         }
 
-        /* 移动端重点优化：确保至少显示两条完整商机卡片 */
+        /* 移动端重点：地图比例适当，列表高度足够，卡片内容可完整显示2条以上 */
         @media (max-width: 780px) {
             #app {
                 flex-direction: column;
             }
-
             #map {
-                height: 42vh;
-                min-height: 240px;
+                height: 38vh;
+                min-height: 220px;
             }
-
             #side {
                 width: 100%;
-                height: 58vh;
+                height: 62vh;
                 border-top: 2px solid #1e3044;
             }
-
-            .industry-filter,
-            .status-filter {
-                max-height: 68px;
-                gap: 6px;
-            }
-
-            /* 极度压缩卡片内边距和间距，保证两条完整显示 */
+            /* 列表区域加大内部紧凑性，确保每条卡片高度 <= 82px 左右，6条可见 */
             .lead-card {
-                padding: 5px 6px;
+                padding: 5px 7px;
             }
             .lc-name {
                 font-size: 11px;
             }
             .lc-badge {
-                font-size: 7px;
+                font-size: 6px;
                 padding: 1px 4px;
             }
-            .lc-info {
+            .lc-info-row {
                 font-size: 8px;
                 gap: 5px;
-                margin: 1px 0;
-            }
-            .lc-core {
-                font-size: 9px;
-                margin: 0;
             }
             .lc-actions a {
-                padding: 2px 6px;
-                font-size: 9px;
-            }
-            .lc-followup {
-                gap: 4px;
-                margin-top: 3px;
+                padding: 2px 5px;
+                font-size: 8px;
             }
             .status-select {
-                font-size: 9px;
+                font-size: 8px;
                 padding: 2px 5px;
             }
             .remark-btn, .remind-btn {
+                font-size: 8px;
                 padding: 2px 6px;
-                font-size: 9px;
             }
-            /* 确保列表容器有足够滚动空间，不压缩卡片高度 */
-            #lead-list {
-                gap: 6px;
-                padding: 4px 6px 8px 6px;
+            .industry-filter, .status-filter {
+                max-height: 55px;
+                margin: 3px 6px;
+            }
+        }
+        /* 超小机型继续压缩行高 */
+        @media (max-width: 480px) {
+            .lead-card {
+                padding: 4px 6px;
+            }
+            .lc-info-row {
+                gap: 4px;
+            }
+            .lc-followup {
+                gap: 4px;
             }
         }
     </style>
@@ -483,15 +430,15 @@
     <div id="map"></div>
     <div id="side">
         <div id="side-header">
-            <div><h2>🎯 客户经理工作台</h2><div class="meta">脱核经营贷 | 全国供应链 | 跟进管理</div></div>
+            <div><h2>🎯 客户经理工作台</h2><div class="meta">脱核经营贷 · 全国供应链</div></div>
             <div><button id="logoutBtn" class="logout-btn">🚪 退出</button></div>
         </div>
         <div id="stats">
-            <div class="stat"><div class="v" id="stat-total">0</div><div class="l">商机总数</div></div>
+            <div class="stat"><div class="v" id="stat-total">0</div><div class="l">商机</div></div>
             <div class="stat"><div class="v" id="stat-s">0</div><div class="l">S级</div></div>
             <div class="stat"><div class="v" id="stat-star">0</div><div class="l">⭐背书</div></div>
             <div class="stat"><div class="v" id="stat-strong">0</div><div class="l">强意愿</div></div>
-            <div class="stat"><div class="v" id="stat-avg">0</div><div class="l">平均分</div></div>
+            <div class="stat"><div class="v" id="stat-avg">0</div><div class="l">均分</div></div>
             <div class="stat today-remind"><div class="v" id="stat-today">0</div><div class="l">今日待跟进</div></div>
         </div>
         <div id="filters">
@@ -500,10 +447,10 @@
         </div>
         <!-- 行业筛选栏 -->
         <div class="industry-filter" id="industryFilterBar">
-            <span style="font-size:11px; margin-right:4px;">🏭 行业：</span>
+            <span style="font-size:10px; margin-right:4px;">🏭 行业：</span>
             <span data-industry="全部" class="industry-filter-item active" onclick="setIndustry('全部')">全部</span>
         </div>
-        <!-- 分割线 + 状态筛选栏会在JS中动态插入到正确位置（行业筛选之后） -->
+        <!-- 分割线与状态栏将在js中动态插入 -->
         <div id="lead-count">加载数据中...</div>
         <div id="lead-list"></div>
     </div>
@@ -523,7 +470,6 @@
     }
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ---------- 用户信息 ----------
     let currentUser = null;
     let userFollowups = {};
     let allLeads = [];
@@ -653,7 +599,6 @@
         } else if (newRemind) alert('日期格式应为 YYYY-MM-DD');
     }
 
-    // 构建弹窗html
     function buildPopupHtml(lead) {
         const starIcon = lead.star ? '⭐' : '';
         const status = userFollowups[lead.rank]?.status || '待跟进';
@@ -731,15 +676,23 @@
             const remindDate = userFollowups[l.rank]?.remindDate || '';
             const statusOptions = ['待跟进','已联系','有意向','已签约','已放款','无效'];
             const displayPhone = maskPhone(l.phone);
-            const displayCore = maskCoreEnterprise(l.core_enterprise);
+            const displayCoreShort = maskCoreEnterprise(l.core_enterprise);
             const phoneAction = currentUser.role === 'super'
                 ? `<a href="tel:${l.phone}" onclick="event.stopPropagation()">📞 ${displayPhone}</a>`
                 : `<a href="javascript:void(0)" onclick="event.stopPropagation(); handleCall('${l.phone}', '${l.name.replace(/'/g, "\\'")}', ${l.rank})">📞 ${displayPhone}</a>`;
+            
             return `<div class="lead-card ${l.priority === 'S级' ? 'S' : 'A'}" onclick="flyToLead(${l.lat},${l.lng},'${l.name.replace(/'/g,"\\'")}')">
-                <div class="lc-top"><div class="lc-name">#${l.rank} ${l.name}</div><div class="lc-badges">${starBadge}${priBadge}${willBadge}</div></div>
-                <div class="lc-info"><span>🏭 ${l.industry}</span><span>💰 ${l.capital}万</span><span>📊 ${l.total}分</span></div>
-                <div class="lc-core">⭐ 核心企业：${displayCore}</div>
-                <div class="lc-actions">
+                <div class="lc-top">
+                    <div class="lc-name">#${l.rank} ${l.name}</div>
+                    <div class="lc-badges">${starBadge}${priBadge}${willBadge}</div>
+                </div>
+                <div class="lc-info-row">
+                    <span>🏭 ${l.industry}</span>
+                    <span>💰 ${l.capital}万</span>
+                    <span>📊 ${l.total}分</span>
+                    <span>⭐ 核心: <span class="core-enterprise" title="${l.core_enterprise}">${displayCoreShort}</span></span>
+                </div>
+                <div class="lc-actions" onclick="event.stopPropagation()">
                     ${phoneAction}
                     <a href="javascript:void(0)" onclick="event.stopPropagation(); navigateToAmap(${l.lat}, ${l.lng}, '${l.name.replace(/'/g, "\\'")}', ${l.rank})">🗺️ 导航</a>
                 </div>
@@ -747,8 +700,8 @@
                     <select class="status-select" data-rank="${l.rank}" onchange="updateStatus(${l.rank}, this.value)">
                         ${statusOptions.map(opt => `<option value="${opt}" ${status === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                     </select>
-                    <button class="remark-btn" onclick="editRemark(${l.rank})">📝 备注${remark ? '✓' : ''}</button>
-                    <button class="remind-btn" onclick="setRemind(${l.rank})">⏰ ${remindDate || '提醒'}</button>
+                    <button class="remark-btn" onclick="editRemark(${l.rank})">📝 ${remark ? '✓' : '备注'}</button>
+                    <button class="remind-btn" onclick="setRemind(${l.rank})">⏰ ${remindDate ? remindDate.slice(5) : '提醒'}</button>
                 </div>
             </div>`;
         }).join('');
@@ -837,7 +790,7 @@
             allLeads = opportunities;
             userFollowups = followups;
 
-            // 动态生成行业选项
+            // 行业选项
             const industries = [...new Set(allLeads.map(l => l.industry).filter(Boolean))];
             const industryBar = document.getElementById('industryFilterBar');
             industries.forEach(ind => {
@@ -849,7 +802,7 @@
                 industryBar.appendChild(span);
             });
 
-            // 在行业筛选后插入分割线和状态筛选栏
+            // 状态筛选插入
             const divider = document.createElement('div');
             divider.className = 'filter-divider';
             const statusContainer = document.createElement('div');
