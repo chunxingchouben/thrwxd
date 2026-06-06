@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>用户行为统计看板 · 脱核经营贷</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0d1b2a;
+            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif;
+            padding: 20px;
+            color: #c8d6e5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* 头部 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #4fc3f7;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logout-btn {
+            background: #1e3a2e;
+            border: none;
+            color: #8bc34a;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .logout-btn:hover {
+            background: #2a5a44;
+        }
+
+        /* 统计卡片 */
+        .summary-cards {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .summary-card {
+            background: #0f1923;
+            border-radius: 16px;
+            padding: 18px 24px;
+            flex: 1;
+            min-width: 150px;
+            border-left: 4px solid #4fc3f7;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .summary-card h3 {
+            font-size: 13px;
+            color: #8ba9c4;
+            margin-bottom: 8px;
+        }
+        .summary-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+
+        /* 表格 */
+        .table-wrapper {
+            background: #0f1923;
+            border-radius: 16px;
+            overflow-x: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            background: #0a1623;
+            padding: 14px 12px;
+            text-align: left;
+            color: #4fc3f7;
+            font-weight: bold;
+            border-bottom: 1px solid #1e3044;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #1e3044;
+            color: #c8d6e5;
+        }
+        tr:hover {
+            background: #112233;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .badge-super {
+            background: #e5393533;
+            color: #e53935;
+            border: 1px solid #e53935;
+        }
+        .badge-normal {
+            background: #1e3a2e33;
+            color: #8bc34a;
+            border: 1px solid #8bc34a;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            font-size: 18px;
+            color: #8ba9c4;
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #e53935;
+            background: #0f1923;
+            border-radius: 16px;
+        }
+        .refresh-btn {
+            background: #1a73e8;
+            border: none;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-left: 16px;
+        }
+
+        @media (max-width: 700px) {
+            body { padding: 12px; }
+            th, td { font-size: 12px; padding: 8px; }
+            .summary-card .number { font-size: 24px; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📊 用户行为统计看板</h1>
+        <button id="logoutBtn" class="logout-btn">🚪 退出登录</button>
+    </div>
+
+    <div class="summary-cards" id="summaryCards">
+        <div class="summary-card"><h3>👥 总用户数</h3><div class="number" id="totalUsers">-</div></div>
+        <div class="summary-card"><h3>📞 总拨打量</h3><div class="number" id="totalCalls">-</div></div>
+        <div class="summary-card"><h3>🗺️ 总导航量</h3><div class="number" id="totalNavigates">-</div></div>
+        <div class="summary-card"><h3>📝 总备注数</h3><div class="number" id="totalRemarks">-</div></div>
+    </div>
+
+    <div class="table-wrapper">
+        <table id="statsTable">
+            <thead>
+                <tr><th>用户名</th><th>角色</th><th>📞 拨打次数</th><th>🗺️ 导航次数</th><th>📝 备注次数</th><th>总操作数</th></tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="6" class="loading">加载中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 16px; text-align: right;">
+        <button id="refreshBtn" class="refresh-btn">🔄 刷新数据</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ==================== Supabase 配置 ====================
+        const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
+
+        if (!window.supabase || !window.supabase.createClient) {
+            alert('Supabase SDK 加载失败，请刷新页面');
+            throw new Error('Supabase SDK not loaded');
+        }
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ---------- 权限检查 ----------
+        let currentUserRole = null;
+        let currentUserId = null;
+
+        async function checkAuth() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            currentUserId = user.id;
+            // 获取用户角色
+            const { data: roleData } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', user.id)
+                .single();
+            currentUserRole = roleData?.role || 'normal';
+            if (currentUserRole !== 'super') {
+                alert('您没有权限访问此页面，仅超级管理员可查看');
+                window.location.href = 'map.html';
+                return false;
+            }
+            return true;
+        }
+
+        // ---------- 统计数据查询 ----------
+        async function fetchStats() {
+            try {
+                // 1. 获取所有用户（从 auth.users 无法直接查询，需要通过 user_roles 或者 events 表关联）
+                // 方案：从 events 和 followups 中获取所有出现过的 user_id，再通过 user_roles 获取用户名
+                // 更简单：直接查询 user_roles 表，包含所有已注册用户
+                const { data: usersData, error: usersError } = await supabase
+                    .from('user_roles')
+                    .select('user_id, role');
+                if (usersError) throw usersError;
+
+                if (!usersData || usersData.length === 0) {
+                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="6">暂无用户数据</td></tr>';
+                    document.getElementById('totalUsers').innerText = '0';
+                    return;
+                }
+
+                // 获取所有用户的邮箱/用户名（通过 auth.users API，但需要 admin 权限，这里用 user_id 和 role 展示，用户名从 email 推断）
+                // 由于无法批量获取 auth.users，我们通过查询每个用户的 email？不现实。
+                // 替代：在 user_roles 表中增加 username 字段（之前没有）。我们临时通过 events 表关联？不好。
+                // 更合理：在注册时，我们将用户名也存入 user_roles 表的 raw_user_meta_data？但没有。
+                // 为了演示，我们创建一个映射：通过查询 auth.users（需要 service_role key，不推荐前端）。
+                // 这里采用简化方式：显示 user_id 前8位作为标识，并尝试通过 user_roles 自定义字段。
+                // 实际上，我们可以在 user_roles 表增加 username 列，但需要修改触发器。
+                // 为了不复杂，我们直接从 events 表和 followups 表统计，最终按 user_id 分组，展示 user_id 简称。
+                // 如果需要展示用户名，可以另外从 auth.users 的 email 中提取（但需要 admin api，不推荐前端）。
+                // 这里我们只显示 user_id 的后8位，并标注角色。
+                
+                // 获取所有拨打和导航事件
+                const { data: events, error: eventsError } = await supabase
+                    .from('events')
+                    .select('user_id, event_type');
+                if (eventsError) throw eventsError;
+
+                // 获取所有备注（remark 非空且不为空字符串）
+                const { data: followups, error: followError } = await supabase
+                    .from('followups')
+                    .select('user_id, remark')
+                    .not('remark', 'is', null)
+                    .neq('remark', '');
+                if (followError) throw followError;
+
+                // 统计每个用户的拨打、导航、备注次数
+                const callCount = {};
+                const navCount = {};
+                events.forEach(ev => {
+                    if (ev.event_type === 'call') callCount[ev.user_id] = (callCount[ev.user_id] || 0) + 1;
+                    if (ev.event_type === 'navigate') navCount[ev.user_id] = (navCount[ev.user_id] || 0) + 1;
+                });
+                const remarkCount = {};
+                followups.forEach(f => {
+                    remarkCount[f.user_id] = (remarkCount[f.user_id] || 0) + 1;
+                });
+
+                // 合并用户列表
+                const allUserIds = new Set();
+                usersData.forEach(u => allUserIds.add(u.user_id));
+                Object.keys(callCount).forEach(id => allUserIds.add(id));
+                Object.keys(navCount).forEach(id => allUserIds.add(id));
+                Object.keys(remarkCount).forEach(id => allUserIds.add(id));
+
+                // 构建用户角色映射
+                const userRoleMap = {};
+                usersData.forEach(u => { userRoleMap[u.user_id] = u.role; });
+
+                // 获取用户名：通过 auth.admin 无法前端，我们简单用 user_id 后8位 + 角色标识
+                // 更优雅：在 user_roles 表中增加 username 字段（需要修改表结构）。这里不新增，只显示 short_id
+                const userList = Array.from(allUserIds).map(userId => {
+                    const role = userRoleMap[userId] || 'normal';
+                    // 生成短名称（后6位）
+                    const shortId = userId.slice(-8);
+                    // 尝试从 events 中关联的？没有额外信息，就显示短ID
+                    const displayName = `${shortId} (${role === 'super' ? '超级' : '普通'})`;
+                    return {
+                        user_id: userId,
+                        displayName: displayName,
+                        role: role,
+                        calls: callCount[userId] || 0,
+                        navigates: navCount[userId] || 0,
+                        remarks: remarkCount[userId] || 0
+                    };
+                });
+
+                // 按总操作数排序
+                userList.sort((a,b) => (b.calls+b.navigates+b.remarks) - (a.calls+a.navigates+a.remarks));
+
+                // 渲染表格
+                const tbody = document.getElementById('tableBody');
+                if (userList.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">暂无数据</td></tr>';
+                } else {
+                    tbody.innerHTML = userList.map(u => `
+                        <tr>
+                            <td>${escapeHtml(u.displayName)}</td>
+                            <td><span class="badge ${u.role === 'super' ? 'badge-super' : 'badge-normal'}">${u.role === 'super' ? '超级账号' : '普通账号'}</span></td>
+                            <td>${u.calls}</td>
+                            <td>${u.navigates}</td>
+                            <td>${u.remarks}</td>
+                            <td>${u.calls + u.navigates + u.remarks}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // 更新汇总卡片
+                const totalCalls = userList.reduce((s,u) => s+u.calls, 0);
+                const totalNavigates = userList.reduce((s,u) => s+u.navigates, 0);
+                const totalRemarks = userList.reduce((s,u) => s+u.remarks, 0);
+                document.getElementById('totalUsers').innerText = userList.length;
+                document.getElementById('totalCalls').innerText = totalCalls;
+                document.getElementById('totalNavigates').innerText = totalNavigates;
+                document.getElementById('totalRemarks').innerText = totalRemarks;
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('tableBody').innerHTML = `<tr><td colspan="6" class="error">加载失败: ${err.message}</td></tr>`;
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // 退出登录
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            localStorage.clear();
+            window.location.href = 'index.html';
+        });
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchStats();
+        });
+
+        // 初始化
+        (async function init() {
+            const authorized = await checkAuth();
+            if (!authorized) return;
+            await fetchStats();
+        })();
+    })();
+</script>
+</body>
+</html>
