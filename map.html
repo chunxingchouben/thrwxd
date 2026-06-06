@@ -6,67 +6,456 @@
     <title>全国 · 脱核经营贷作战地图 · 客户经理工作台</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: #0d1b2a; overflow: hidden; height: 100vh; width: 100vw; }
-        #app { display: flex; height: 100%; width: 100%; }
-        #map { flex: 1; background: #e0e7f0; z-index: 1; }
-        #side { width: 420px; background: #0f1923; color: #c8d6e5; display: flex; flex-direction: column; border-left: 1px solid #1e3044; overflow: hidden; box-shadow: -4px 0 20px rgba(0,0,0,0.5); }
-        #side-header { background: linear-gradient(135deg,#0d2137,#0f1923); padding: 10px 14px; border-bottom: 1px solid #1e3044; display: flex; justify-content: space-between; align-items: center; }
-        #side-header h2 { font-size: 15px; color: #4fc3f7; margin-bottom: 2px; }
-        .logout-btn { background: #1e3a2e; border: none; color: #8bc34a; padding: 5px 12px; border-radius: 30px; font-size: 11px; cursor: pointer; font-weight: bold; }
-        #stats { display: flex; gap: 6px; padding: 8px 10px; background: #0a1623; border-bottom: 1px solid #1e3044; flex-wrap: wrap; }
-        .stat { flex: 1; min-width: 68px; text-align: center; padding: 6px 2px; background: #112233; border-radius: 8px; }
-        .stat .v { font-size: 17px; font-weight: bold; color: #4fc3f7; }
-        .stat .l { font-size: 10px; color: #7a9bb5; margin-top: 2px; }
-        .stat.today-remind { background: #2a3a2e; }
-        #filters { display: flex; gap: 6px; padding: 8px 10px; background: #0a1623; border-bottom: 1px solid #1e3044; flex-wrap: wrap; align-items: center; }
-        #filters input { flex: 2; min-width: 120px; background: #112233; border: 1px solid #1e3044; color: #c8d6e5; padding: 8px 10px; border-radius: 30px; font-size: 13px; outline: none; }
-        .filter-btn { padding: 6px 14px; border-radius: 30px; border: 1px solid #1e3044; background: #112233; color: #8ba9c4; font-size: 12px; cursor: pointer; white-space: nowrap; }
-        .filter-btn.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
-        .industry-filter {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: #0d1b2a;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #app {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* 左侧地图区域 - 移动端保证真实地图可视且比例合适 */
+        #map {
+            flex: 1;
+            background: #cbd5e1;
+            z-index: 1;
+            min-height: 0;
+        }
+
+        /* 右侧侧边栏 */
+        #side {
+            width: 420px;
+            background: #0f1923;
+            color: #c8d6e5;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #1e3044;
+            overflow: hidden;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #side-header {
+            background: linear-gradient(135deg, #0d2137, #0f1923);
+            padding: 10px 14px;
+            border-bottom: 1px solid #1e3044;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        #side-header h2 {
+            font-size: 15px;
+            color: #4fc3f7;
+            margin-bottom: 2px;
+        }
+
+        .logout-btn {
+            background: #1e3a2e;
+            border: none;
+            color: #8bc34a;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* 紧凑统计栏 */
+        #stats {
             display: flex;
             gap: 6px;
+            padding: 8px 10px;
+            background: #0a1623;
+            border-bottom: 1px solid #1e3044;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .stat {
+            flex: 1;
+            min-width: 68px;
+            text-align: center;
+            padding: 6px 2px;
+            background: #112233;
+            border-radius: 8px;
+        }
+
+        .stat .v {
+            font-size: 17px;
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+
+        .stat .l {
+            font-size: 10px;
+            color: #7a9bb5;
+            margin-top: 2px;
+        }
+
+        .stat.today-remind {
+            background: #2a3a2e;
+        }
+
+        /* 筛选栏基础样式 */
+        #filters {
+            display: flex;
+            gap: 6px;
+            padding: 8px 10px;
+            background: #0a1623;
+            border-bottom: 1px solid #1e3044;
+            flex-wrap: wrap;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        #filters input {
+            flex: 2;
+            min-width: 120px;
+            background: #112233;
+            border: 1px solid #1e3044;
+            color: #c8d6e5;
+            padding: 8px 10px;
+            border-radius: 30px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .export-btn {
+            background: #1e3a2e;
+            border: none;
+            color: #8bc34a;
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        /* 行业筛选 - 窄高度，可上下滚动，最多显示两行 */
+        .industry-filter {
+            display: flex;
+            gap: 8px;
             flex-wrap: wrap;
             margin: 6px 10px;
-            max-height: 60px;
+            max-height: 70px;      /* 大约两行高度，超出滚动 */
             overflow-y: auto;
+            align-items: center;
+            flex-shrink: 0;
+            padding: 4px 2px;
+            scrollbar-width: thin;
         }
-        .industry-filter-item { padding: 3px 10px; border-radius: 20px; background: #112233; cursor: pointer; font-size: 11px; white-space: nowrap; }
-        .industry-filter-item.active { background: #1a73e8; }
-        #lead-list { flex: 1; overflow-y: auto; padding: 6px 6px 20px 6px; }
-        .lead-card { padding: 10px 12px; margin: 6px 0; background: #112233; border-radius: 12px; border-left: 3px solid #4fc3f7; cursor: pointer; }
-        .lead-card.S { border-left-color: #e53935; }
-        .lead-card.A { border-left-color: #ffa726; }
-        .lc-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .lc-name { font-weight: bold; color: #e0e0e0; font-size: 13px; }
-        .lc-badges { display: flex; gap: 4px; }
-        .lc-badge { padding: 2px 6px; border-radius: 20px; font-size: 9px; font-weight: bold; }
-        .badge-star { background: #fff3e0; color: #e65100; }
-        .badge-s { background: #e5393533; color: #e53935; }
-        .badge-a { background: #ffa72633; color: #ffa726; }
-        .badge-strong { background: #4caf5033; color: #66bb6a; }
-        .badge-mid { background: #ffa72633; color: #ffa726; }
-        .lc-info { display: flex; gap: 8px; font-size: 10px; color: #8ba9c4; margin: 4px 0; flex-wrap: wrap; }
-        .lc-core { font-size: 11px; color: #4fc3f7; margin: 2px 0; }
-        .lc-actions { display: flex; gap: 12px; margin-top: 6px; }
-        .lc-actions a { color: #66bb6a; text-decoration: none; background: #1e3a2e; padding: 3px 10px; border-radius: 20px; font-size: 11px; cursor: pointer; }
-        .lc-followup { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
-        .status-select { background: #0a1623; color: #c8d6e5; border: 1px solid #2a4055; border-radius: 20px; padding: 3px 8px; font-size: 11px; }
-        .remark-btn, .remind-btn { background: #1e3a2e; border: none; color: #8bc34a; border-radius: 20px; padding: 3px 8px; font-size: 11px; cursor: pointer; }
-        .status-filter { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 10px; }
-        .status-filter-item { padding: 3px 10px; border-radius: 20px; background: #112233; cursor: pointer; font-size: 11px; }
-        .status-filter-item.active { background: #1a73e8; }
-        #legend2 { position: absolute; bottom: 15px; left: 12px; background: #0f1923dd; backdrop-filter: blur(8px); padding: 5px 10px; border-radius: 12px; color: #c8d6e5; font-size: 10px; z-index: 1000; pointer-events: none; }
-        .leaflet-popup-content { font-size: 12px; min-width: 240px; }
-        .pop-phone-link, .pop-nav-link { display: inline-block; background: #e9f5ef; padding: 2px 8px; border-radius: 20px; margin-right: 6px; text-decoration: none; color: #2e7d64; cursor: pointer; }
-        #online-badge { position: absolute; top: 12px; right: 12px; background: #1e3a2ecc; backdrop-filter: blur(4px); color: #8bc34a; padding: 4px 10px; border-radius: 20px; font-size: 10px; z-index: 1001; pointer-events: none; }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; display: flex; justify-content: center; align-items: center; color: white; font-size: 18px; backdrop-filter: blur(8px); }
-        .export-btn { background: #1e3a2e; border: none; color: #8bc34a; padding: 5px 12px; border-radius: 30px; font-size: 11px; cursor: pointer; margin-left: 8px; }
-        @media (max-width: 780px) { 
-            #app { flex-direction: column; } 
-            #map { height: 40vh; min-height: 240px; } 
-            #side { width: 100%; height: 60vh; border-top: 2px solid #1e3044; }
-            .industry-filter { max-height: 60px; }
+
+        .industry-filter-item {
+            padding: 4px 12px;
+            border-radius: 40px;
+            background: #112233;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+            transition: all 0.1s;
+        }
+
+        .industry-filter-item.active {
+            background: #1a73e8;
+            color: white;
+        }
+
+        /* 视觉分割线 */
+        .filter-divider {
+            margin: 4px 10px;
+            height: 1px;
+            background: #2a4055;
+            opacity: 0.8;
+            flex-shrink: 0;
+        }
+
+        /* 状态筛选 - 同样可滚动两行高度，点击标蓝 */
+        .status-filter {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 0px 10px 8px 10px;
+            max-height: 70px;
+            overflow-y: auto;
+            align-items: center;
+            flex-shrink: 0;
+            padding: 4px 2px;
+            scrollbar-width: thin;
+        }
+
+        .status-filter-item {
+            padding: 4px 12px;
+            border-radius: 40px;
+            background: #112233;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+            transition: all 0.1s;
+        }
+
+        .status-filter-item.active {
+            background: #1a73e8;
+            color: white;
+        }
+
+        /* 商机列表区域 - 紧凑优化，确保手机屏幕可见至少2条完整卡片 */
+        #lead-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px 8px 16px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* 卡片样式极致紧凑，无重叠 */
+        .lead-card {
+            padding: 8px 10px;
+            background: #112233;
+            border-radius: 14px;
+            border-left: 3px solid #4fc3f7;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .lead-card.S {
+            border-left-color: #e53935;
+        }
+
+        .lead-card.A {
+            border-left-color: #ffa726;
+        }
+
+        .lc-top {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .lc-name {
+            font-weight: bold;
+            color: #e0e0e0;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+        }
+
+        .lc-badges {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .lc-badge {
+            padding: 2px 5px;
+            border-radius: 20px;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .badge-star {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .badge-s {
+            background: #e5393533;
+            color: #e53935;
+        }
+
+        .badge-a {
+            background: #ffa72633;
+            color: #ffa726;
+        }
+
+        .badge-strong {
+            background: #4caf5033;
+            color: #66bb6a;
+        }
+
+        .badge-mid {
+            background: #ffa72633;
+            color: #ffa726;
+        }
+
+        .lc-info {
+            display: flex;
+            gap: 8px;
+            font-size: 9px;
+            color: #8ba9c4;
+            margin: 3px 0 2px 0;
+            flex-wrap: wrap;
+        }
+
+        .lc-core {
+            font-size: 10px;
+            color: #4fc3f7;
+            margin: 2px 0;
+            word-break: break-word;
+        }
+
+        .lc-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .lc-actions a {
+            color: #66bb6a;
+            text-decoration: none;
+            background: #1e3a2e;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .lc-followup {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+            align-items: center;
+        }
+
+        .status-select {
+            background: #0a1623;
+            color: #c8d6e5;
+            border: 1px solid #2a4055;
+            border-radius: 20px;
+            padding: 3px 6px;
+            font-size: 10px;
+        }
+
+        .remark-btn,
+        .remind-btn {
+            background: #1e3a2e;
+            border: none;
+            color: #8bc34a;
+            border-radius: 20px;
+            padding: 3px 8px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        #lead-count {
+            font-size: 11px;
+            padding: 2px 12px 4px;
+            color: #7a9bb5;
+            flex-shrink: 0;
+        }
+
+        #legend2 {
+            position: absolute;
+            bottom: 15px;
+            left: 12px;
+            background: #0f1923dd;
+            backdrop-filter: blur(8px);
+            padding: 5px 10px;
+            border-radius: 12px;
+            color: #c8d6e5;
+            font-size: 10px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .leaflet-popup-content {
+            font-size: 12px;
+            min-width: 220px;
+        }
+
+        .pop-phone-link,
+        .pop-nav-link {
+            display: inline-block;
+            background: #e9f5ef;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-right: 6px;
+            text-decoration: none;
+            color: #2e7d64;
+            cursor: pointer;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            backdrop-filter: blur(8px);
+        }
+
+        /* 移动端重点适配：确保地图明显且卡片不重叠，两行筛选滚动 */
+        @media (max-width: 780px) {
+            #app {
+                flex-direction: column;
+            }
+
+            /* 地图比例加大，确保手机端真实地图可见面积足够 */
+            #map {
+                height: 42vh;
+                min-height: 260px;
+            }
+
+            #side {
+                width: 100%;
+                height: 58vh;
+                border-top: 2px solid #1e3044;
+            }
+
+            .industry-filter,
+            .status-filter {
+                max-height: 68px;
+                gap: 6px;
+            }
+
+            /* 卡片内边距进一步收紧 */
+            .lead-card {
+                padding: 6px 8px;
+            }
+            .lc-name {
+                font-size: 11px;
+            }
+            .lc-info {
+                font-size: 9px;
+                gap: 6px;
+            }
+            .lc-actions a {
+                padding: 2px 7px;
+                font-size: 9px;
+            }
+            .remark-btn, .remind-btn {
+                padding: 2px 7px;
+                font-size: 9px;
+            }
+            .status-select {
+                font-size: 9px;
+                padding: 2px 5px;
+            }
         }
     </style>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -92,10 +481,12 @@
             <input type="text" id="search" placeholder="🔍 搜索企业名/核心企业/产品" oninput="filterLeads()">
             <button class="export-btn" id="exportBtn" style="display: none;">📎 导出CSV</button>
         </div>
+        <!-- 行业筛选栏 -->
         <div class="industry-filter" id="industryFilterBar">
-            <span style="font-size:11px; margin-right:6px;">行业筛选：</span>
+            <span style="font-size:11px; margin-right:4px;">🏭 行业：</span>
             <span data-industry="全部" class="industry-filter-item active" onclick="setIndustry('全部')">全部</span>
         </div>
+        <!-- 分割线 + 状态筛选栏会在JS中动态插入到正确位置（行业筛选之后） -->
         <div id="lead-count">加载数据中...</div>
         <div id="lead-list"></div>
     </div>
@@ -109,7 +500,6 @@
     const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
     
-    // 检测 SDK 是否加载成功
     if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
         alert('Supabase SDK 加载失败，请刷新页面重试');
         throw new Error('Supabase SDK 未正确加载');
@@ -117,8 +507,8 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ---------- 用户信息 ----------
-    let currentUser = null;      // { id, username, role }
-    let userFollowups = {};      // { lead_rank: { status, remark, remindDate } }
+    let currentUser = null;
+    let userFollowups = {};
     let allLeads = [];
     let map, markers = [];
     let currentIndustry = '全部';
@@ -128,14 +518,12 @@
     async function getCurrentUser() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('未登录');
-        // 获取角色
         const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
             .eq('user_id', user.id)
             .single();
         const role = roleData?.role || 'normal';
-        // 从 email 中提取用户名 (xxx@trade.local)
         const username = user.email.split('@')[0];
         return { id: user.id, email: user.email, username, role };
     }
@@ -152,7 +540,6 @@
         return name.slice(0,2) + '***';
     }
 
-    // 记录事件（拨打、导航）
     async function logEvent(leadRank, eventType) {
         try {
             await supabase.from('events').insert({
@@ -160,9 +547,7 @@
                 lead_rank: leadRank,
                 event_type: eventType
             });
-        } catch (e) {
-            console.warn('事件记录失败', e);
-        }
+        } catch (e) { console.warn(e); }
     }
 
     function handleCall(phone, leadName, leadRank) {
@@ -220,7 +605,7 @@
                 ...updateData,
                 updated_at: new Date()
             }, { onConflict: 'user_id, lead_rank' });
-        if (error) console.error('更新跟进记录失败', error);
+        if (error) console.error('更新失败', error);
     }
 
     async function updateStatus(rank, newStatus) {
@@ -232,7 +617,7 @@
 
     async function editRemark(rank) {
         const currentRemark = userFollowups[rank]?.remark || '';
-        const newRemark = prompt('请输入备注（可记录沟通要点、联系人信息等）', currentRemark);
+        const newRemark = prompt('请输入备注（记录沟通要点）', currentRemark);
         if (newRemark !== null) {
             await upsertFollowup(rank, { remark: newRemark });
             userFollowups[rank] = { ...userFollowups[rank], remark: newRemark };
@@ -242,18 +627,16 @@
 
     async function setRemind(rank) {
         const currentRemind = userFollowups[rank]?.remindDate || '';
-        const newRemind = prompt('请输入提醒日期（格式：2025-06-10）', currentRemind);
+        const newRemind = prompt('提醒日期格式：2025-06-10', currentRemind);
         if (newRemind && /^\d{4}-\d{2}-\d{2}$/.test(newRemind)) {
             await upsertFollowup(rank, { remind_date: newRemind });
             userFollowups[rank] = { ...userFollowups[rank], remindDate: newRemind };
             renderLeadList();
             alert(`已设置 ${newRemind} 提醒`);
-        } else if (newRemind) {
-            alert('日期格式应为 YYYY-MM-DD');
-        }
+        } else if (newRemind) alert('日期格式应为 YYYY-MM-DD');
     }
 
-    // ---------- 地图与UI渲染 ----------
+    // 构建弹窗html
     function buildPopupHtml(lead) {
         const starIcon = lead.star ? '⭐' : '';
         const status = userFollowups[lead.rank]?.status || '待跟进';
@@ -262,17 +645,16 @@
         const phoneLink = currentUser.role === 'super'
             ? `<a href="tel:${lead.phone}" class="pop-phone-link">${displayPhone}</a>`
             : `<a href="javascript:void(0)" onclick="handleCall('${lead.phone}', '${lead.name.replace(/'/g, "\\'")}', ${lead.rank})" class="pop-phone-link">${displayPhone}</a>`;
-        return `<div style="min-width:220px;">
+        return `<div style="min-width:200px;">
             <h4>${starIcon} ${lead.name}</h4>
-            <div class="pop-row"><strong>排名：</strong>#${lead.rank} | <strong>总分：</strong>${lead.total}分</div>
-            <div class="pop-row"><strong>优先级：</strong>${lead.priority} | <strong>意愿度：</strong>${lead.willingness}</div>
-            <div class="pop-row"><strong>📱 手机：</strong> ${phoneLink}</div>
-            <div class="pop-row"><strong>📍 地址：</strong>${lead.address}</div>
-            <div class="pop-row"><strong>🏭 核心企业：</strong>${displayCore}</div>
-            <div class="pop-row"><strong>🔗 绑定：</strong>${lead.binding}</div>
-            <div class="pop-row"><strong>📦 产品：</strong>${lead.product}</div>
-            <div class="pop-row"><a href="javascript:void(0)" onclick="navigateToAmap(${lead.lat}, ${lead.lng}, '${lead.name.replace(/'/g, "\\'")}', ${lead.rank})" class="pop-nav-link">🗺️ 高德导航</a></div>
-            <div class="pop-row"><strong>跟进状态：</strong> ${status}</div>
+            <div><strong>排名：</strong>#${lead.rank} | <strong>总分：</strong>${lead.total}分</div>
+            <div><strong>优先级：</strong>${lead.priority} | <strong>意愿度：</strong>${lead.willingness}</div>
+            <div><strong>📱 手机：</strong> ${phoneLink}</div>
+            <div><strong>📍 地址：</strong>${lead.address}</div>
+            <div><strong>🏭 核心企业：</strong>${displayCore}</div>
+            <div><strong>📦 产品：</strong>${lead.product}</div>
+            <div><a href="javascript:void(0)" onclick="navigateToAmap(${lead.lat}, ${lead.lng}, '${lead.name.replace(/'/g, "\\'")}', ${lead.rank})" class="pop-nav-link">🗺️ 高德导航</a></div>
+            <div><strong>跟进：</strong> ${status}</div>
         </div>`;
     }
 
@@ -304,8 +686,9 @@
         if (searchTerm) {
             filtered = filtered.filter(l => l.name.toLowerCase().includes(searchTerm) || l.core_enterprise.toLowerCase().includes(searchTerm) || l.product.toLowerCase().includes(searchTerm) || l.industry.toLowerCase().includes(searchTerm));
         }
-        document.getElementById('lead-count').textContent = `显示 ${filtered.length} 条商机`;
+        document.getElementById('lead-count').textContent = `📋 显示 ${filtered.length} 条商机`;
 
+        // 同步地图标记显隐
         markers.forEach(m => {
             const lead = m._leadData;
             let visible = (currentIndustry === '全部' || lead.industry === currentIndustry);
@@ -398,33 +781,16 @@
     window.setRemind = setRemind;
     window.navigateToAmap = navigateToAmap;
 
-    // 导出CSV（仅超级用户）
     async function exportToCSV() {
-        if (currentUser.role !== 'super') {
-            alert('只有超级账号才能导出数据');
-            return;
-        }
+        if (currentUser.role !== 'super') { alert('仅超级账号可导出'); return; }
         const searchTerm = document.getElementById('search').value.toLowerCase();
         let filtered = allLeads.filter(l => currentIndustry === '全部' || l.industry === currentIndustry);
         if (searchTerm) filtered = filtered.filter(l => l.name.toLowerCase().includes(searchTerm) || l.core_enterprise.toLowerCase().includes(searchTerm) || l.product.toLowerCase().includes(searchTerm) || l.industry.toLowerCase().includes(searchTerm));
         const rows = filtered.map(l => {
             const ud = userFollowups[l.rank] || {};
-            return {
-                "排名": l.rank,
-                "企业名称": l.name,
-                "行业": l.industry,
-                "优先级": l.priority,
-                "意愿度": l.willingness,
-                "总分": l.total,
-                "电话": l.phone,
-                "地址": l.address,
-                "核心企业": l.core_enterprise,
-                "跟进状态": ud.status || "待跟进",
-                "备注": ud.remark || "",
-                "提醒日期": ud.remindDate || ""
-            };
+            return { "排名": l.rank, "企业名称": l.name, "行业": l.industry, "优先级": l.priority, "意愿度": l.willingness, "总分": l.total, "电话": l.phone, "地址": l.address, "核心企业": l.core_enterprise, "跟进状态": ud.status || "待跟进", "备注": ud.remark || "", "提醒日期": ud.remindDate || "" };
         });
-        const csv = convertToCSV(rows);
+        const csv = [Object.keys(rows[0]).join(","), ...rows.map(row => Object.values(row).map(v => JSON.stringify(v||"")).join(","))].join("\n");
         const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -435,27 +801,18 @@
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     }
-    function convertToCSV(data) {
-        const headers = Object.keys(data[0] || {});
-        const rows = data.map(obj => headers.map(header => JSON.stringify(obj[header] || "")).join(","));
-        return [headers.join(","), ...rows].join("\n");
-    }
 
-    // 地图初始化
     function initMap() {
         map = L.map('map').setView([39.9042, 116.4074], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 贡献者',
-            maxZoom: 19,
-            minZoom: 6
+            attribution: '&copy; OpenStreetMap',
+            maxZoom: 19
         }).addTo(map);
         if(window.innerWidth <= 780) map.zoomControl.setPosition('bottomright');
         window.addEventListener('resize', () => map.invalidateSize());
-        // 示例集群圈
         L.circle([39.9,116.4], {radius:80000, color:"#f47738", weight:1.5, dashArray:'5 5', fill:false}).addTo(map).bindTooltip("京津冀装备集群");
     }
 
-    // 初始化页面
     async function init() {
         try {
             currentUser = await getCurrentUser();
@@ -463,7 +820,7 @@
             allLeads = opportunities;
             userFollowups = followups;
 
-            // 动态生成行业筛选按钮
+            // 动态生成行业选项
             const industries = [...new Set(allLeads.map(l => l.industry).filter(Boolean))];
             const industryBar = document.getElementById('industryFilterBar');
             industries.forEach(ind => {
@@ -474,6 +831,27 @@
                 span.onclick = () => setIndustry(ind);
                 industryBar.appendChild(span);
             });
+
+            // 在行业筛选后插入分割线和状态筛选栏 (实现视觉隔离 + 可上下翻动两行)
+            const divider = document.createElement('div');
+            divider.className = 'filter-divider';
+            const statusContainer = document.createElement('div');
+            statusContainer.className = 'status-filter';
+            statusContainer.id = 'dynamicStatusFilter';
+            // 状态选项列表
+            const statuses = ['全部', '待跟进', '已联系', '有意向', '已签约', '已放款', '无效', '今日提醒'];
+            statuses.forEach(st => {
+                const span = document.createElement('span');
+                span.className = 'status-filter-item';
+                span.setAttribute('data-status', st);
+                span.innerText = st === '今日提醒' ? '📅 今日提醒' : st;
+                if (st === '全部') span.classList.add('active');
+                span.onclick = () => setStatusFilter(st);
+                statusContainer.appendChild(span);
+            });
+            // 插入到 industryFilterBar 之后
+            industryBar.insertAdjacentElement('afterend', divider);
+            divider.insertAdjacentElement('afterend', statusContainer);
 
             document.getElementById('loadingIndicator').style.display = 'none';
             document.getElementById('app').style.display = 'flex';
@@ -486,26 +864,6 @@
                 document.getElementById('exportBtn').style.display = 'inline-block';
                 document.getElementById('exportBtn').onclick = exportToCSV;
             }
-
-            // 添加状态筛选栏（带分隔线）
-            const statusBarHtml = `
-                <hr style="margin: 6px 10px; border-color: #2a4055;">
-                <div class="status-filter" id="statusFilterBar">
-                    <span style="font-size:11px; margin-right:6px;">状态筛选：</span>
-                    <span data-status="全部" class="status-filter-item active" onclick="setStatusFilter('全部')">全部</span>
-                    <span data-status="待跟进" class="status-filter-item" onclick="setStatusFilter('待跟进')">待跟进</span>
-                    <span data-status="已联系" class="status-filter-item" onclick="setStatusFilter('已联系')">已联系</span>
-                    <span data-status="有意向" class="status-filter-item" onclick="setStatusFilter('有意向')">有意向</span>
-                    <span data-status="已签约" class="status-filter-item" onclick="setStatusFilter('已签约')">已签约</span>
-                    <span data-status="已放款" class="status-filter-item" onclick="setStatusFilter('已放款')">已放款</span>
-                    <span data-status="无效" class="status-filter-item" onclick="setStatusFilter('无效')">无效</span>
-                    <span data-status="今日提醒" class="status-filter-item" onclick="setStatusFilter('今日提醒')">📅 今日提醒</span>
-                </div>
-            `;
-            const filtersDiv = document.getElementById('filters');
-            if (!document.getElementById('statusFilterBar')) {
-                filtersDiv.insertAdjacentHTML('afterend', statusBarHtml);
-            }
         } catch (err) {
             console.error(err);
             document.getElementById('loadingIndicator').innerHTML = '❌ 初始化失败，请重新登录<br>' + err.message;
@@ -513,7 +871,6 @@
         }
     }
 
-    // 退出登录
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         await supabase.auth.signOut();
         localStorage.clear();
