@@ -52,13 +52,40 @@
         #online-badge { position: absolute; top: 12px; right: 12px; background: #1e3a2ecc; backdrop-filter: blur(4px); color: #8bc34a; padding: 4px 10px; border-radius: 20px; font-size: 10px; z-index: 1001; pointer-events: none; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; display: flex; justify-content: center; align-items: center; color: white; font-size: 18px; backdrop-filter: blur(8px); }
         .export-btn { background: #1e3a2e; border: none; color: #8bc34a; padding: 5px 12px; border-radius: 30px; font-size: 11px; cursor: pointer; margin-left: 8px; }
-        @media (max-width: 780px) { #app { flex-direction: column; } #map { height: 40vh; min-height: 240px; } #side { width: 100%; height: 60vh; border-top: 2px solid #1e3044; } }
+
+        /* 手机端优化：地图缩小，列表上移，卡片紧凑 */
+        @media (max-width: 780px) {
+            #app { flex-direction: column; }
+            #map { height: 32vh; min-height: 200px; }   /* 降低地图高度，给列表更多空间 */
+            #side { width: 100%; height: 68vh; border-top: 2px solid #1e3044; } /* 列表占68% */
+            #side-header { padding: 6px 10px; }
+            #side-header h2 { font-size: 13px; }
+            .stat { min-width: 58px; padding: 4px 1px; }
+            .stat .v { font-size: 14px; }
+            .filter-btn { padding: 4px 8px; font-size: 10px; }
+            .status-filter-item { font-size: 10px; padding: 2px 8px; }
+            .lead-card { padding: 6px 8px; margin: 4px 0; }
+            .lc-name { font-size: 12px; }
+            .lc-info { font-size: 9px; gap: 6px; }
+            .lc-core { font-size: 10px; }
+            .lc-actions a { font-size: 10px; padding: 2px 6px; }
+            .lc-followup { gap: 4px; margin-top: 4px; }
+            .status-select, .remark-btn, .remind-btn { font-size: 9px; padding: 2px 6px; }
+            #lead-count { font-size: 10px; }
+            .export-btn { font-size: 10px; padding: 4px 8px; }
+            .leaflet-control-zoom { bottom: 10px; right: 10px; top: auto; }
+        }
+
+        @media (max-width: 480px) {
+            .stat { min-width: 52px; }
+            .stat .v { font-size: 13px; }
+            .filter-btn { padding: 3px 6px; }
+        }
     </style>
 </head>
 <body>
 <div id="app" style="display: none;">
     <div id="map"></div>
-    <div id="online-badge">🗺️ 真实地图 · 一键导航</div>
     <div id="side">
         <div id="side-header">
             <div><h2>🎯 客户经理工作台</h2><div class="meta">脱核经营贷 | 跟进管理 | 数据导出</div></div>
@@ -104,7 +131,6 @@
     let currentUsername = localStorage.getItem("trade_map_currentUser");
     if (!currentUsername) window.location.href = "index.html";
 
-    // 用户跟进数据存储 key
     function getUserDataKey() { return `trade_map_followup_${currentUsername}`; }
     function loadUserData() { return JSON.parse(localStorage.getItem(getUserDataKey())) || {}; }
     function saveUserData(data) { localStorage.setItem(getUserDataKey(), JSON.stringify(data)); }
@@ -112,7 +138,7 @@
     // 全局变量
     let map, markers = [], allLeads = [];
     let currentDistrict = '全部';
-    let currentStatusFilter = '全部'; // 全部、待跟进、已联系、有意向、已签约、已放款、无效、今日提醒
+    let currentStatusFilter = '全部';
 
     // ---------- 高德导航 ----------
     function navigateToAmap(lat, lng, name) {
@@ -121,7 +147,7 @@
         window.location.href = `https://uri.amap.com/navigation?to=${lng},${lat}&toName=${encodedName}&mode=car&callnative=1`;
     }
 
-    // ---------- 构建弹窗 ----------
+    // 弹窗
     function buildPopupHtml(lead, userData) {
         const starIcon = lead.star ? '⭐' : '';
         const status = userData[lead.rank]?.status || '待跟进';
@@ -161,7 +187,6 @@
         userData[rank].status = newStatus;
         saveUserData(userData);
         renderLeadList();
-        // 刷新弹窗内容（需要重新绑定popup，简单粗暴：重新渲染标记）
         renderMarkers(allLeads, loadUserData());
     }
     function editRemark(rank) {
@@ -196,7 +221,6 @@
         const searchTerm = document.getElementById('search').value.toLowerCase();
         let filtered = allLeads.filter(l => currentDistrict === '全部' || l.district === currentDistrict);
         
-        // 状态筛选
         if (currentStatusFilter !== '全部') {
             if (currentStatusFilter === '今日提醒') {
                 const today = new Date().toISOString().slice(0,10);
@@ -267,7 +291,6 @@
         document.getElementById('stat-today').innerText = todayCount;
     }
     
-    // 筛选控制
     function setStatusFilter(status) {
         currentStatusFilter = status;
         document.querySelectorAll('.status-filter-item').forEach(el => {
@@ -334,13 +357,13 @@
     window.setRemind = setRemind;
     window.setStatusFilter = setStatusFilter;
     
-    // ---------- 地图初始化 ----------
+    // ---------- 地图初始化 (真实OSM地图) ----------
     function initMap() {
         map = L.map('map').setView([43.87, 87.60], 11);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB',
-            subdomains: 'abcd',
-            maxZoom: 18,
+        // 更真实的标准 OpenStreetMap 瓦片 (高德/百度风格)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 贡献者',
+            maxZoom: 19,
             minZoom: 9
         }).addTo(map);
         if(window.innerWidth <= 780) map.zoomControl.setPosition('bottomright');
@@ -394,7 +417,6 @@
         }
     }
     
-    // 退出登录
     document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.removeItem("trade_map_currentUser");
         window.location.href = "index.html";
