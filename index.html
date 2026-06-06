@@ -46,10 +46,11 @@
     </div>
 </div>
 <script>
+(function() {
     // ==================== Supabase 配置 ====================
     const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);   // 修正：使用 createClient
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const NORMAL_INVITE = "XJ2026";
     const SUPER_INVITE = "SUPER2026";
@@ -70,6 +71,11 @@
         return username.toLowerCase().replace(/[^a-z0-9]/g, '') + '@trade.local';
     }
 
+    // 通用网络错误提示
+    function showNetworkError(container, defaultMsg = '网络错误，请检查网络连接后重试') {
+        container.innerText = defaultMsg;
+    }
+
     // 注册
     document.getElementById('doRegisterBtn').addEventListener('click', async () => {
         const username = document.getElementById('regUsername').value.trim();
@@ -82,21 +88,26 @@
         else if (invite === SUPER_INVITE) role = 'super';
         else { errorDiv.innerText = '邀请码错误'; return; }
         const email = toEmail(username);
-        const { data, error } = await supabase.auth.signUp({
-            email: email,
-            password: password,
-            options: { data: { role: role } }
-        });
-        if (error) {
-            if (error.message.includes('already registered')) errorDiv.innerText = '用户名已存在';
-            else errorDiv.innerText = error.message;
-            return;
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: { data: { role: role } }
+            });
+            if (error) {
+                if (error.message.includes('already registered')) errorDiv.innerText = '用户名已存在';
+                else errorDiv.innerText = error.message;
+                return;
+            }
+            errorDiv.innerText = '注册成功！请登录';
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regInviteCode').value = '';
+            showLogin();
+        } catch (err) {
+            console.error(err);
+            errorDiv.innerText = '网络错误，请稍后重试';
         }
-        errorDiv.innerText = '注册成功！请登录';
-        document.getElementById('regUsername').value = '';
-        document.getElementById('regPassword').value = '';
-        document.getElementById('regInviteCode').value = '';
-        showLogin();
     });
 
     // 登录
@@ -106,28 +117,41 @@
         const errorDiv = document.getElementById('loginError');
         if (!username || !password) { errorDiv.innerText = '请输入用户名和密码'; return; }
         const email = toEmail(username);
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) { errorDiv.innerText = '用户名或密码错误'; return; }
-        // 获取用户角色
-        const { data: roleData, error: roleError } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', data.user.id)
-            .single();
-        const role = roleData?.role || 'normal';
-        localStorage.setItem('trade_map_currentUser', username);
-        localStorage.setItem('trade_map_userRole', role);
-        localStorage.setItem('trade_map_userId', data.user.id);
-        window.location.href = 'map.html';
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) { errorDiv.innerText = '用户名或密码错误'; return; }
+            // 获取用户角色
+            const { data: roleData, error: roleError } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', data.user.id)
+                .single();
+            if (roleError && roleError.code !== 'PGRST116') { // 如果角色不存在，默认为 normal
+                console.warn('角色查询失败', roleError);
+            }
+            const role = roleData?.role || 'normal';
+            localStorage.setItem('trade_map_currentUser', username);
+            localStorage.setItem('trade_map_userRole', role);
+            localStorage.setItem('trade_map_userId', data.user.id);
+            window.location.href = 'map.html';
+        } catch (err) {
+            console.error(err);
+            errorDiv.innerText = '网络错误，请检查网络连接后重试';
+        }
     });
 
     // 已登录直接跳转
     (async () => {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-            window.location.href = 'map.html';
+        try {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+                window.location.href = 'map.html';
+            }
+        } catch (err) {
+            console.warn('Session 检查失败', err);
         }
     })();
+})();
 </script>
 </body>
 </html>
