@@ -26,7 +26,7 @@
 <body>
 <div class="auth-card">
     <h2>🏦 脱核经营贷</h2>
-    <div class="sub">乌鲁木齐 · 供应链作战地图</div>
+    <div class="sub">全国 · 供应链作战地图</div>
     <div class="tab-bar">
         <button id="loginTabBtn" class="tab-btn active">登录</button>
         <button id="registerTabBtn" class="tab-btn">注册</button>
@@ -40,14 +40,15 @@
     <div id="registerForm" style="display: none;">
         <div class="input-group"><label>用户名</label><input type="text" id="regUsername" placeholder="用户名"></div>
         <div class="input-group"><label>密码</label><input type="password" id="regPassword" placeholder="密码"></div>
-        <div class="input-group"><label>邀请码</label><input type="text" id="regInviteCode" placeholder="固定邀请码"></div>
+        <div class="input-group"><label>邀请码</label><input type="text" id="regInviteCode" placeholder="邀请码"></div>
         <button class="auth-btn" id="doRegisterBtn">注 册</button>
         <div id="regError" class="error-msg"></div>
     </div>
-    <div class="info-note">🔐 内部系统，需邀请码方可注册</div>
+    <div class="info-note">🔐 普通邀请码：XJ2026 &nbsp;&nbsp; 超级邀请码：SUPER2026</div>
 </div>
 <script>
-    const FIXED_INVITE_CODE = "XJ2026";
+    const NORMAL_INVITE = "XJ2026";
+    const SUPER_INVITE = "SUPER2026";
     function hashPassword(pwd) { return CryptoJS.SHA256(pwd).toString(); }
 
     let users = JSON.parse(localStorage.getItem("trade_map_users")) || [];
@@ -71,10 +72,13 @@
         const invite = document.getElementById('regInviteCode').value.trim();
         const errorDiv = document.getElementById('regError');
         if (!username || !password) { errorDiv.innerText = '用户名/密码不能为空'; return; }
-        if (invite !== FIXED_INVITE_CODE) { errorDiv.innerText = '邀请码错误，无法注册'; return; }
+        let role = null;
+        if (invite === NORMAL_INVITE) role = 'normal';
+        else if (invite === SUPER_INVITE) role = 'super';
+        else { errorDiv.innerText = '邀请码错误'; return; }
         if (users.find(u => u.username === username)) { errorDiv.innerText = '用户名已存在'; return; }
         const passwordHash = hashPassword(password);
-        users.push({ username, passwordHash });
+        users.push({ username, passwordHash, role });
         saveUsers();
         errorDiv.innerText = '注册成功！请登录';
         document.getElementById('regUsername').value = '';
@@ -94,6 +98,7 @@
         const inputHash = hashPassword(password);
         if (inputHash !== user.passwordHash) { errorDiv.innerText = '用户名或密码错误'; return; }
         localStorage.setItem("trade_map_currentUser", username);
+        localStorage.setItem("trade_map_userRole", user.role);
         window.location.href = "map.html";
     });
 
