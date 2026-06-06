@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>用户行为统计看板 · 脱核经营贷</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>行为统计看板 · 脱核经营贷</title>
     <style>
         * {
             margin: 0;
@@ -12,14 +12,14 @@
         }
 
         body {
-            background: #0d1b2a;
-            font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif;
-            padding: 20px;
-            color: #c8d6e5;
+            background: #0a0f1a;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            padding: 20px 12px 40px;
+            color: #e2e8f0;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 600px;
             margin: 0 auto;
         }
 
@@ -27,134 +27,202 @@
         .header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
+            align-items: baseline;
+            margin-bottom: 16px;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 8px;
         }
         h1 {
-            font-size: 24px;
-            color: #4fc3f7;
+            font-size: 20px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            color: #4fc3f7;
         }
         .logout-btn {
             background: #1e3a2e;
             border: none;
             color: #8bc34a;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 14px;
-            cursor: pointer;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 12px;
             font-weight: bold;
+            cursor: pointer;
             transition: 0.2s;
         }
-        .logout-btn:hover {
-            background: #2a5a44;
+        .logout-btn:active { background: #2a5a44; }
+
+        /* 横向滚动 KPI (毛玻璃) */
+        .kpi-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scrollbar-width: thin;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .kpi-card {
+            background: rgba(15, 25, 35, 0.75);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            padding: 12px 20px;
+            min-width: 130px;
+            border: 1px solid rgba(64, 128, 128, 0.3);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .kpi-card .label {
+            font-size: 12px;
+            color: #8ba9c4;
+            margin-bottom: 6px;
+        }
+        .kpi-card .number {
+            font-size: 28px;
+            font-weight: 800;
+            color: #4fc3f7;
+            letter-spacing: -0.5px;
         }
 
-        /* 统计卡片 */
-        .summary-cards {
+        /* 排行榜切换选项卡 (方案三竞技风格) */
+        .rank-tabs {
             display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
+            background: #0f172a;
+            padding: 4px;
+            border-radius: 60px;
+            margin: 16px 0 20px;
+            gap: 4px;
+        }
+        .rank-tab {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 600;
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .rank-tab.active {
+            background: #1e293b;
+            color: #4fc3f7;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* 排名列表（竖向卡片，方案一风格 + 方案三排名元素） */
+        .rank-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .rank-item {
+            background: #0f1923;
+            backdrop-filter: blur(4px);
+            border-radius: 20px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 3px solid #4fc3f7;
+            transition: 0.1s;
+        }
+        .rank-item.top-1 {
+            border-left-color: #ffd966;
+            background: #1a2a2f;
+        }
+        .rank-item.top-2 {
+            border-left-color: #c0c0c0;
+        }
+        .rank-item.top-3 {
+            border-left-color: #cd7f32;
+        }
+        .rank-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             flex-wrap: wrap;
         }
-        .summary-card {
-            background: #0f1923;
-            border-radius: 16px;
-            padding: 18px 24px;
-            flex: 1;
-            min-width: 150px;
-            border-left: 4px solid #4fc3f7;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-        .summary-card h3 {
-            font-size: 13px;
-            color: #8ba9c4;
-            margin-bottom: 8px;
-        }
-        .summary-card .number {
-            font-size: 32px;
+        .rank-medal {
+            width: 36px;
+            font-size: 22px;
             font-weight: bold;
-            color: #4fc3f7;
+            text-align: center;
         }
-
-        /* 表格 */
-        .table-wrapper {
-            background: #0f1923;
-            border-radius: 16px;
-            overflow-x: auto;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        .rank-info {
+            display: flex;
+            flex-direction: column;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
+        .rank-name {
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
         }
-        th {
-            background: #0a1623;
-            padding: 14px 12px;
-            text-align: left;
-            color: #4fc3f7;
-            font-weight: bold;
-            border-bottom: 1px solid #1e3044;
+        .role-badge {
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 30px;
+            font-weight: normal;
         }
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #1e3044;
-            color: #c8d6e5;
-        }
-        tr:hover {
-            background: #112233;
-        }
-        .badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-        .badge-super {
+        .role-super {
             background: #e5393533;
             color: #e53935;
-            border: 1px solid #e53935;
+            border: 0.5px solid #e53935;
         }
-        .badge-normal {
+        .role-normal {
             background: #1e3a2e33;
             color: #8bc34a;
-            border: 1px solid #8bc34a;
+            border: 0.5px solid #8bc34a;
         }
-
-        .loading {
-            text-align: center;
-            padding: 60px;
-            font-size: 18px;
-            color: #8ba9c4;
+        .rank-stats {
+            text-align: right;
         }
-        .error {
+        .rank-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: #4fc3f7;
+        }
+        .rank-label {
+            font-size: 10px;
+            color: #7e95b0;
+        }
+        .empty-state {
             text-align: center;
             padding: 40px;
-            color: #e53935;
             background: #0f1923;
-            border-radius: 16px;
+            border-radius: 28px;
+            color: #7e95b0;
         }
+
         .refresh-btn {
             background: #1a73e8;
             border: none;
             color: white;
-            padding: 6px 16px;
-            border-radius: 30px;
+            padding: 8px 20px;
+            border-radius: 40px;
             font-size: 13px;
+            font-weight: bold;
+            margin-top: 20px;
+            width: 100%;
             cursor: pointer;
-            margin-left: 16px;
+            transition: 0.2s;
         }
-
-        @media (max-width: 700px) {
-            body { padding: 12px; }
-            th, td { font-size: 12px; padding: 8px; }
-            .summary-card .number { font-size: 24px; }
+        .refresh-btn:active { background: #0f5bb5; }
+        .footer {
+            margin-top: 16px;
+            font-size: 10px;
+            text-align: center;
+            color: #5a7892;
+        }
+        /* 加载动画 */
+        .loading-placeholder {
+            text-align: center;
+            padding: 40px;
+            color: #8ba9c4;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -162,48 +230,52 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>📊 用户行为统计看板</h1>
-        <button id="logoutBtn" class="logout-btn">🚪 退出登录</button>
+        <h1>🏆 行为竞赛看板</h1>
+        <button id="logoutBtn" class="logout-btn">🚪 退出</button>
     </div>
 
-    <div class="summary-cards" id="summaryCards">
-        <div class="summary-card"><h3>👥 总用户数</h3><div class="number" id="totalUsers">-</div></div>
-        <div class="summary-card"><h3>📞 总拨打量</h3><div class="number" id="totalCalls">-</div></div>
-        <div class="summary-card"><h3>🗺️ 总导航量</h3><div class="number" id="totalNavigates">-</div></div>
-        <div class="summary-card"><h3>📝 总备注数</h3><div class="number" id="totalRemarks">-</div></div>
+    <!-- 横向 KPI 卡片 (毛玻璃) -->
+    <div class="kpi-scroll" id="kpiScroll">
+        <div class="kpi-card"><div class="label">👥 总用户</div><div class="number" id="totalUsers">--</div></div>
+        <div class="kpi-card"><div class="label">📞 总拨打</div><div class="number" id="totalCalls">--</div></div>
+        <div class="kpi-card"><div class="label">🗺️ 总导航</div><div class="number" id="totalNavigates">--</div></div>
+        <div class="kpi-card"><div class="label">📝 总备注</div><div class="number" id="totalRemarks">--</div></div>
     </div>
 
-    <div class="table-wrapper">
-        <table id="statsTable">
-            <thead>
-                <tr><th>用户名</th><th>角色</th><th>📞 拨打次数</th><th>🗺️ 导航次数</th><th>📝 备注次数</th><th>总操作数</th></tr>
-            </thead>
-            <tbody id="tableBody">
-                <tr><td colspan="6" class="loading">加载中...</td></tr>
-            </tbody>
-        </table>
+    <!-- 排行榜切换 (方案三风格) -->
+    <div class="rank-tabs" id="rankTabs">
+        <div class="rank-tab active" data-metric="total">🏅 总操作榜</div>
+        <div class="rank-tab" data-metric="calls">📞 拨打榜</div>
+        <div class="rank-tab" data-metric="navigates">🗺️ 导航榜</div>
+        <div class="rank-tab" data-metric="remarks">📝 备注榜</div>
     </div>
-    <div style="margin-top: 16px; text-align: right;">
-        <button id="refreshBtn" class="refresh-btn">🔄 刷新数据</button>
+
+    <!-- 排名列表容器 -->
+    <div id="rankListContainer" class="rank-list">
+        <div class="loading-placeholder">加载统计数据中...</div>
     </div>
+
+    <button id="refreshBtn" class="refresh-btn">🔄 刷新数据</button>
+    <div class="footer">仅超级管理员可见 | 数据实时统计</div>
 </div>
 
 <script>
     (function() {
-        // ==================== Supabase 配置 ====================
+        // Supabase 配置
         const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
-
+        
         if (!window.supabase || !window.supabase.createClient) {
             alert('Supabase SDK 加载失败，请刷新页面');
-            throw new Error('Supabase SDK not loaded');
+            throw new Error('SDK not loaded');
         }
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ---------- 权限检查 ----------
         let currentUserRole = null;
         let currentUserId = null;
+        let rawUserStats = [];   // 存储每个用户的统计 { userId, displayName, role, calls, navigates, remarks, total }
 
+        // 权限检查（仅超级管理员）
         async function checkAuth() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
@@ -211,7 +283,6 @@
                 return false;
             }
             currentUserId = user.id;
-            // 获取用户角色
             const { data: roleData } = await supabase
                 .from('user_roles')
                 .select('role')
@@ -226,124 +297,150 @@
             return true;
         }
 
-        // ---------- 统计数据查询 ----------
-        async function fetchStats() {
-            try {
-                // 1. 获取所有用户（从 auth.users 无法直接查询，需要通过 user_roles 或者 events 表关联）
-                // 方案：从 events 和 followups 中获取所有出现过的 user_id，再通过 user_roles 获取用户名
-                // 更简单：直接查询 user_roles 表，包含所有已注册用户
-                const { data: usersData, error: usersError } = await supabase
-                    .from('user_roles')
-                    .select('user_id, role');
-                if (usersError) throw usersError;
+        // 从 events 和 followups 中提取统计数据
+        async function fetchRawStats() {
+            // 获取所有用户角色（user_roles）
+            const { data: usersData, error: usersError } = await supabase
+                .from('user_roles')
+                .select('user_id, role');
+            if (usersError) throw usersError;
 
-                if (!usersData || usersData.length === 0) {
-                    document.getElementById('tableBody').innerHTML = '<tr><td colspan="6">暂无用户数据</td></tr>';
-                    document.getElementById('totalUsers').innerText = '0';
-                    return;
-                }
+            // 获取所有事件（拨打 + 导航）
+            const { data: events, error: eventsError } = await supabase
+                .from('events')
+                .select('user_id, event_type');
+            if (eventsError) throw eventsError;
 
-                // 获取所有用户的邮箱/用户名（通过 auth.users API，但需要 admin 权限，这里用 user_id 和 role 展示，用户名从 email 推断）
-                // 由于无法批量获取 auth.users，我们通过查询每个用户的 email？不现实。
-                // 替代：在 user_roles 表中增加 username 字段（之前没有）。我们临时通过 events 表关联？不好。
-                // 更合理：在注册时，我们将用户名也存入 user_roles 表的 raw_user_meta_data？但没有。
-                // 为了演示，我们创建一个映射：通过查询 auth.users（需要 service_role key，不推荐前端）。
-                // 这里采用简化方式：显示 user_id 前8位作为标识，并尝试通过 user_roles 自定义字段。
-                // 实际上，我们可以在 user_roles 表增加 username 列，但需要修改触发器。
-                // 为了不复杂，我们直接从 events 表和 followups 表统计，最终按 user_id 分组，展示 user_id 简称。
-                // 如果需要展示用户名，可以另外从 auth.users 的 email 中提取（但需要 admin api，不推荐前端）。
-                // 这里我们只显示 user_id 的后8位，并标注角色。
-                
-                // 获取所有拨打和导航事件
-                const { data: events, error: eventsError } = await supabase
-                    .from('events')
-                    .select('user_id, event_type');
-                if (eventsError) throw eventsError;
+            // 获取所有备注（remark 非空）
+            const { data: followups, error: followError } = await supabase
+                .from('followups')
+                .select('user_id, remark')
+                .not('remark', 'is', null)
+                .neq('remark', '');
+            if (followError) throw followError;
 
-                // 获取所有备注（remark 非空且不为空字符串）
-                const { data: followups, error: followError } = await supabase
-                    .from('followups')
-                    .select('user_id, remark')
-                    .not('remark', 'is', null)
-                    .neq('remark', '');
-                if (followError) throw followError;
+            // 统计拨打、导航
+            const callMap = {}, navMap = {};
+            events.forEach(ev => {
+                if (ev.event_type === 'call') callMap[ev.user_id] = (callMap[ev.user_id] || 0) + 1;
+                if (ev.event_type === 'navigate') navMap[ev.user_id] = (navMap[ev.user_id] || 0) + 1;
+            });
+            // 统计备注次数（每次修改/新增备注都算一次，但一个用户对同一个 lead 可能有多次，实际只要 remark 存在就算一次记录）
+            // 这里简单统计 followups 表中每个用户有多少条 remark 非空的记录
+            const remarkMap = {};
+            followups.forEach(f => {
+                remarkMap[f.user_id] = (remarkMap[f.user_id] || 0) + 1;
+            });
 
-                // 统计每个用户的拨打、导航、备注次数
-                const callCount = {};
-                const navCount = {};
-                events.forEach(ev => {
-                    if (ev.event_type === 'call') callCount[ev.user_id] = (callCount[ev.user_id] || 0) + 1;
-                    if (ev.event_type === 'navigate') navCount[ev.user_id] = (navCount[ev.user_id] || 0) + 1;
+            // 合并所有用户 ID（来自 user_roles 以及有行为的用户）
+            const allUserIds = new Set();
+            usersData.forEach(u => allUserIds.add(u.user_id));
+            Object.keys(callMap).forEach(id => allUserIds.add(id));
+            Object.keys(navMap).forEach(id => allUserIds.add(id));
+            Object.keys(remarkMap).forEach(id => allUserIds.add(id));
+
+            // 建立角色映射
+            const roleMap = {};
+            usersData.forEach(u => { roleMap[u.user_id] = u.role; });
+
+            // 构建用户统计数组
+            const stats = [];
+            for (const userId of allUserIds) {
+                const role = roleMap[userId] || 'normal';
+                // 生成显示名称: 取 user_id 后8位，并附加角色标识
+                const shortId = userId.slice(-8);
+                const displayName = `${shortId}`;
+                const calls = callMap[userId] || 0;
+                const navigates = navMap[userId] || 0;
+                const remarks = remarkMap[userId] || 0;
+                const total = calls + navigates + remarks;
+                stats.push({
+                    userId,
+                    displayName,
+                    role,
+                    calls,
+                    navigates,
+                    remarks,
+                    total
                 });
-                const remarkCount = {};
-                followups.forEach(f => {
-                    remarkCount[f.user_id] = (remarkCount[f.user_id] || 0) + 1;
-                });
-
-                // 合并用户列表
-                const allUserIds = new Set();
-                usersData.forEach(u => allUserIds.add(u.user_id));
-                Object.keys(callCount).forEach(id => allUserIds.add(id));
-                Object.keys(navCount).forEach(id => allUserIds.add(id));
-                Object.keys(remarkCount).forEach(id => allUserIds.add(id));
-
-                // 构建用户角色映射
-                const userRoleMap = {};
-                usersData.forEach(u => { userRoleMap[u.user_id] = u.role; });
-
-                // 获取用户名：通过 auth.admin 无法前端，我们简单用 user_id 后8位 + 角色标识
-                // 更优雅：在 user_roles 表中增加 username 字段（需要修改表结构）。这里不新增，只显示 short_id
-                const userList = Array.from(allUserIds).map(userId => {
-                    const role = userRoleMap[userId] || 'normal';
-                    // 生成短名称（后6位）
-                    const shortId = userId.slice(-8);
-                    // 尝试从 events 中关联的？没有额外信息，就显示短ID
-                    const displayName = `${shortId} (${role === 'super' ? '超级' : '普通'})`;
-                    return {
-                        user_id: userId,
-                        displayName: displayName,
-                        role: role,
-                        calls: callCount[userId] || 0,
-                        navigates: navCount[userId] || 0,
-                        remarks: remarkCount[userId] || 0
-                    };
-                });
-
-                // 按总操作数排序
-                userList.sort((a,b) => (b.calls+b.navigates+b.remarks) - (a.calls+a.navigates+a.remarks));
-
-                // 渲染表格
-                const tbody = document.getElementById('tableBody');
-                if (userList.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6">暂无数据</td></tr>';
-                } else {
-                    tbody.innerHTML = userList.map(u => `
-                        <tr>
-                            <td>${escapeHtml(u.displayName)}</td>
-                            <td><span class="badge ${u.role === 'super' ? 'badge-super' : 'badge-normal'}">${u.role === 'super' ? '超级账号' : '普通账号'}</span></td>
-                            <td>${u.calls}</td>
-                            <td>${u.navigates}</td>
-                            <td>${u.remarks}</td>
-                            <td>${u.calls + u.navigates + u.remarks}</td>
-                        </tr>
-                    `).join('');
-                }
-
-                // 更新汇总卡片
-                const totalCalls = userList.reduce((s,u) => s+u.calls, 0);
-                const totalNavigates = userList.reduce((s,u) => s+u.navigates, 0);
-                const totalRemarks = userList.reduce((s,u) => s+u.remarks, 0);
-                document.getElementById('totalUsers').innerText = userList.length;
-                document.getElementById('totalCalls').innerText = totalCalls;
-                document.getElementById('totalNavigates').innerText = totalNavigates;
-                document.getElementById('totalRemarks').innerText = totalRemarks;
-
-            } catch (err) {
-                console.error(err);
-                document.getElementById('tableBody').innerHTML = `<tr><td colspan="6" class="error">加载失败: ${err.message}</td></tr>`;
             }
+            // 按 total 降序排序（默认总榜）
+            stats.sort((a,b) => b.total - a.total);
+            return stats;
         }
 
+        // 更新 KPI 汇总
+        function updateKPIs(stats) {
+            const totalUsers = stats.length;
+            const totalCalls = stats.reduce((s,u) => s+u.calls, 0);
+            const totalNavigates = stats.reduce((s,u) => s+u.navigates, 0);
+            const totalRemarks = stats.reduce((s,u) => s+u.remarks, 0);
+            document.getElementById('totalUsers').innerText = totalUsers;
+            document.getElementById('totalCalls').innerText = totalCalls;
+            document.getElementById('totalNavigates').innerText = totalNavigates;
+            document.getElementById('totalRemarks').innerText = totalRemarks;
+        }
+
+        // 根据指标排序并渲染排名列表 (metric: 'total', 'calls', 'navigates', 'remarks')
+        function renderRanking(metric) {
+            if (!rawUserStats.length) {
+                document.getElementById('rankListContainer').innerHTML = '<div class="empty-state">暂无用户行为数据</div>';
+                return;
+            }
+            // 复制并排序
+            let sorted = [...rawUserStats];
+            let valueKey = metric;
+            if (metric === 'total') valueKey = 'total';
+            else if (metric === 'calls') valueKey = 'calls';
+            else if (metric === 'navigates') valueKey = 'navigates';
+            else if (metric === 'remarks') valueKey = 'remarks';
+            
+            sorted.sort((a,b) => b[valueKey] - a[valueKey]);
+            // 取前20名（手机够用）
+            const topList = sorted.slice(0, 30);
+            
+            const container = document.getElementById('rankListContainer');
+            container.innerHTML = topList.map((user, idx) => {
+                const rank = idx + 1;
+                let medal = '';
+                if (rank === 1) medal = '🥇';
+                else if (rank === 2) medal = '🥈';
+                else if (rank === 3) medal = '🥉';
+                else medal = `${rank}`;
+                
+                let value = user[valueKey];
+                let unitLabel = '';
+                if (metric === 'calls') unitLabel = '次拨打';
+                else if (metric === 'navigates') unitLabel = '次导航';
+                else if (metric === 'remarks') unitLabel = '次备注';
+                else unitLabel = '总操作';
+                
+                const roleClass = user.role === 'super' ? 'role-super' : 'role-normal';
+                const roleText = user.role === 'super' ? '超级' : '普通';
+                const topClass = rank === 1 ? 'top-1' : (rank === 2 ? 'top-2' : (rank === 3 ? 'top-3' : ''));
+                
+                return `
+                    <div class="rank-item ${topClass}">
+                        <div class="rank-left">
+                            <div class="rank-medal">${medal}</div>
+                            <div class="rank-info">
+                                <div class="rank-name">
+                                    ${escapeHtml(user.displayName)}
+                                    <span class="role-badge ${roleClass}">${roleText}</span>
+                                </div>
+                                <div class="rank-label">ID: ${user.userId.slice(-6)}</div>
+                            </div>
+                        </div>
+                        <div class="rank-stats">
+                            <div class="rank-value">${value}</div>
+                            <div class="rank-label">${unitLabel}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            if (topList.length === 0) container.innerHTML = '<div class="empty-state">暂无数据</div>';
+        }
+        
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/[&<>]/g, function(m) {
@@ -354,21 +451,63 @@
             });
         }
 
+        // 当前激活的排行榜指标
+        let currentMetric = 'total';
+        
+        function setActiveTab(metric) {
+            currentMetric = metric;
+            // 更新 tab 样式
+            document.querySelectorAll('.rank-tab').forEach(tab => {
+                const tabMetric = tab.getAttribute('data-metric');
+                if (tabMetric === metric) tab.classList.add('active');
+                else tab.classList.remove('active');
+            });
+            renderRanking(metric);
+        }
+        
+        // 刷新全部数据
+        async function loadAllData() {
+            try {
+                document.getElementById('rankListContainer').innerHTML = '<div class="loading-placeholder">📡 同步统计数据...</div>';
+                const stats = await fetchRawStats();
+                rawUserStats = stats;
+                updateKPIs(stats);
+                // 根据当前激活的指标重新渲染
+                setActiveTab(currentMetric);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('rankListContainer').innerHTML = `<div class="empty-state">❌ 加载失败: ${err.message}</div>`;
+            }
+        }
+
         // 退出登录
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await supabase.auth.signOut();
             localStorage.clear();
             window.location.href = 'index.html';
         });
+        
+        // 绑定选项卡事件
+        function bindTabs() {
+            const tabs = document.querySelectorAll('.rank-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    const metric = tab.getAttribute('data-metric');
+                    if (metric) setActiveTab(metric);
+                });
+            });
+        }
+        
         document.getElementById('refreshBtn').addEventListener('click', () => {
-            fetchStats();
+            loadAllData();
         });
-
+        
         // 初始化
         (async function init() {
             const authorized = await checkAuth();
             if (!authorized) return;
-            await fetchStats();
+            bindTabs();
+            await loadAllData();
         })();
     })();
 </script>
