@@ -1,0 +1,23 @@
+{
+  "leads": [
+    {
+      "name": "企业名称",
+      "rank": 1,
+      "total": 92,
+      "priority": "S级",
+      "willingness": "强",
+      "star": true,
+      "phone": "138****0000",
+      "address": "乌鲁木齐市某区某路",
+      "lat": 43.87,
+      "lng": 87.60,
+      "district": "头屯河",
+      "core_enterprise": "核心企业名",
+      "binding": "绑定关系",
+      "product": "经营贷产品名",
+      "industry": "行业",
+      "capital": 500
+    }
+    // ... 更多企业对象
+  ]
+}
