@@ -28,7 +28,7 @@
 
         #map {
             flex: 1;
-            background: #cbd5e1;
+            background: #1a2a3a;
             z-index: 1;
             min-height: 0;
         }
@@ -317,35 +317,42 @@
             flex-shrink: 0;
         }
 
-        #legend2 {
+        /* 图例 - 左上角，科技感半透明 */
+        #legend-top {
             position: absolute;
-            bottom: 15px;
+            top: 12px;
             left: 12px;
-            background: #0f1923dd;
-            backdrop-filter: blur(8px);
-            padding: 3px 8px;
-            border-radius: 12px;
+            background: rgba(15, 25, 35, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 6px 12px;
+            border-radius: 20px;
             color: #c8d6e5;
             font-size: 9px;
             z-index: 1000;
             pointer-events: none;
+            border: 1px solid rgba(79, 195, 247, 0.4);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-weight: 500;
         }
-
-        .leaflet-popup-content {
-            font-size: 12px;
-            min-width: 200px;
+        #legend-top span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
-
-        .pop-phone-link, .pop-nav-link {
+        .legend-dot {
             display: inline-block;
-            background: #e9f5ef;
-            padding: 2px 8px;
-            border-radius: 20px;
-            margin-right: 6px;
-            text-decoration: none;
-            color: #2e7d64;
-            cursor: pointer;
+            width: 10px;
+            height: 10px;
+            border-radius: 10px;
+            margin-right: 2px;
         }
+        .legend-dot.red { background: #e53935; box-shadow: 0 0 2px #e53935; }
+        .legend-dot.orange { background: #ffa726; }
+        .legend-dot.star { background: #ffb74d; border-radius: 2px; }
+        .legend-dot.heart { background: #ff5252; }
 
         .loading-overlay {
             position: fixed;
@@ -408,8 +415,14 @@
                 max-height: 55px;
                 margin: 3px 6px;
             }
+            #legend-top {
+                top: 8px;
+                left: 8px;
+                padding: 4px 10px;
+                font-size: 8px;
+                gap: 6px;
+            }
         }
-        /* 超小机型继续压缩行高 */
         @media (max-width: 480px) {
             .lead-card {
                 padding: 4px 6px;
@@ -450,12 +463,18 @@
             <span style="font-size:10px; margin-right:4px;">🏭 行业：</span>
             <span data-industry="全部" class="industry-filter-item active" onclick="setIndustry('全部')">全部</span>
         </div>
-        <!-- 分割线与状态栏将在js中动态插入 -->
         <div id="lead-count">加载数据中...</div>
         <div id="lead-list"></div>
     </div>
 </div>
-<div id="legend2" style="display: none;">📊 图例 🔴S级 🟠A级 ⭐背书 ❤️强意愿 ▫️产业集群</div>
+<!-- 新的左上角图例 -->
+<div id="legend-top" style="display: none;">
+    <span><i class="legend-dot red"></i> S级</span>
+    <span><i class="legend-dot orange"></i> A级</span>
+    <span><i class="legend-dot star" style="background:#ffb74d;"></i> ⭐背书</span>
+    <span><i class="legend-dot heart" style="background:#ff5252;"></i> 强意愿</span>
+    <span>🗺️ 产业集群</span>
+</div>
 <div id="loadingIndicator" class="loading-overlay">📡 正在加载商机数据...</div>
 
 <script>
@@ -773,14 +792,21 @@
     }
 
     function initMap() {
+        // 使用高德地图街道图瓦片 (国内访问稳定) 无偏移
+        const amapLayer = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>',
+            maxZoom: 18,
+            subdomains: ['webrd01', 'webrd02', 'webrd03', 'webrd04']
+        });
         map = L.map('map').setView([39.9042, 116.4074], 10);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap',
-            maxZoom: 19
-        }).addTo(map);
+        amapLayer.addTo(map);
+        // 增加一个备胎：如果高德瓦片加载失败，显示提示（不处理自动）
+        map.on('load', () => { console.log('地图加载完成'); });
+        
         if(window.innerWidth <= 780) map.zoomControl.setPosition('bottomright');
-        window.addEventListener('resize', () => map.invalidateSize());
-        L.circle([39.9,116.4], {radius:80000, color:"#f47738", weight:1.5, dashArray:'5 5', fill:false}).addTo(map).bindTooltip("京津冀装备集群");
+        window.addEventListener('resize', () => { map.invalidateSize(); });
+        // 添加产业集群示意圈
+        L.circle([39.9,116.4], {radius:80000, color:"#f47738", weight:1.5, dashArray:'5 5', fill:false, opacity:0.8}).addTo(map).bindTooltip("京津冀装备集群", {sticky:true});
     }
 
     async function init() {
@@ -823,8 +849,10 @@
 
             document.getElementById('loadingIndicator').style.display = 'none';
             document.getElementById('app').style.display = 'flex';
-            document.getElementById('legend2').style.display = 'block';
+            document.getElementById('legend-top').style.display = 'flex';
             initMap();
+            // 强制刷新地图尺寸
+            setTimeout(() => { if(map) map.invalidateSize(); }, 200);
             renderMarkers();
             renderLeadList();
 
