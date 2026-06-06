@@ -21,6 +21,7 @@
         .error-msg { color: #e53935; font-size: 12px; margin-top: 12px; min-height: 30px; }
         .info-note { font-size: 11px; color: #7a9bb5; margin-top: 20px; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 </head>
 <body>
 <div class="auth-card">
@@ -47,16 +48,23 @@
 </div>
 <script>
     const FIXED_INVITE_CODE = "XJ2026";
+    function hashPassword(pwd) { return CryptoJS.SHA256(pwd).toString(); }
+
     let users = JSON.parse(localStorage.getItem("trade_map_users")) || [];
     function saveUsers() { localStorage.setItem("trade_map_users", JSON.stringify(users)); }
+
+    // UI 切换
     const loginFormDiv = document.getElementById('loginForm');
     const registerFormDiv = document.getElementById('registerForm');
     const loginTab = document.getElementById('loginTabBtn');
     const registerTab = document.getElementById('registerTabBtn');
-    function showLogin() { loginFormDiv.style.display = 'block'; registerFormDiv.style.display = 'none'; loginTab.classList.add('active'); registerTab.classList.remove('active'); document.getElementById('loginError').innerText = ''; document.getElementById('regError').innerText = ''; }
-    function showRegister() { loginFormDiv.style.display = 'none'; registerFormDiv.style.display = 'block'; registerTab.classList.add('active'); loginTab.classList.remove('active'); document.getElementById('loginError').innerText = ''; document.getElementById('regError').innerText = ''; }
+    function showLogin() { loginFormDiv.style.display = 'block'; registerFormDiv.style.display = 'none'; loginTab.classList.add('active'); registerTab.classList.remove('active'); clearErrors(); }
+    function showRegister() { loginFormDiv.style.display = 'none'; registerFormDiv.style.display = 'block'; registerTab.classList.add('active'); loginTab.classList.remove('active'); clearErrors(); }
+    function clearErrors() { document.getElementById('loginError').innerText = ''; document.getElementById('regError').innerText = ''; }
     loginTab.addEventListener('click', showLogin);
     registerTab.addEventListener('click', showRegister);
+
+    // 注册
     document.getElementById('doRegisterBtn').addEventListener('click', () => {
         const username = document.getElementById('regUsername').value.trim();
         const password = document.getElementById('regPassword').value.trim();
@@ -65,7 +73,8 @@
         if (!username || !password) { errorDiv.innerText = '用户名/密码不能为空'; return; }
         if (invite !== FIXED_INVITE_CODE) { errorDiv.innerText = '邀请码错误，无法注册'; return; }
         if (users.find(u => u.username === username)) { errorDiv.innerText = '用户名已存在'; return; }
-        users.push({ username, password });
+        const passwordHash = hashPassword(password);
+        users.push({ username, passwordHash });
         saveUsers();
         errorDiv.innerText = '注册成功！请登录';
         document.getElementById('regUsername').value = '';
@@ -73,17 +82,25 @@
         document.getElementById('regInviteCode').value = '';
         showLogin();
     });
+
+    // 登录
     document.getElementById('doLoginBtn').addEventListener('click', () => {
         const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
         const errorDiv = document.getElementById('loginError');
         if (!username || !password) { errorDiv.innerText = '请输入用户名和密码'; return; }
-        const user = users.find(u => u.username === username && u.password === password);
+        const user = users.find(u => u.username === username);
         if (!user) { errorDiv.innerText = '用户名或密码错误'; return; }
+        const inputHash = hashPassword(password);
+        if (inputHash !== user.passwordHash) { errorDiv.innerText = '用户名或密码错误'; return; }
         localStorage.setItem("trade_map_currentUser", username);
         window.location.href = "map.html";
     });
-    if (localStorage.getItem("trade_map_currentUser")) { window.location.href = "map.html"; }
+
+    // 已登录直接跳转
+    if (localStorage.getItem("trade_map_currentUser")) {
+        window.location.href = "map.html";
+    }
 </script>
 </body>
 </html>
