@@ -28,8 +28,8 @@
             gap: 6px;
             flex-wrap: wrap;
             margin: 6px 10px;
-            max-height: 60px;    /* 两行高度 */
-            overflow-y: auto;    /* 超出滚动 */
+            max-height: 60px;
+            overflow-y: auto;
         }
         .industry-filter-item { padding: 3px 10px; border-radius: 20px; background: #112233; cursor: pointer; font-size: 11px; white-space: nowrap; }
         .industry-filter-item.active { background: #1a73e8; }
@@ -69,6 +69,8 @@
             .industry-filter { max-height: 60px; }
         }
     </style>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="app" style="display: none;">
@@ -101,64 +103,154 @@
 <div id="legend2" style="display: none;">📊 图例 🔴S级 🟠A级 ⭐背书 ❤️强意愿 ▫️产业集群</div>
 <div id="loadingIndicator" class="loading-overlay">📡 正在加载商机数据...</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // ---------- 用户角色与权限 ----------
-    let currentUsername = localStorage.getItem("trade_map_currentUser");
-    let currentUserRole = localStorage.getItem("trade_map_userRole");
-    if (!currentUsername) window.location.href = "index.html";
+    // ==================== Supabase 配置 ====================
+    const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
+    const supabase = supabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const isSuper = (currentUserRole === 'super');
+    // ---------- 用户信息 ----------
+    let currentUser = null;      // { id, username, role }
+    let userFollowups = {};      // { lead_rank: { status, remark, remindDate } }
+    let allLeads = [];
+    let map, markers = [];
+    let currentIndustry = '全部';
+    let currentStatusFilter = '全部';
 
-    // 掩码函数
+    // ---------- 辅助函数 ----------
+    async function getCurrentUser() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('未登录');
+        // 获取角色
+        const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .single();
+        const role = roleData?.role || 'normal';
+        // 从 email 中提取用户名 (xxx@trade.local)
+        const username = user.email.split('@')[0];
+        return { id: user.id, email: user.email, username, role };
+    }
+
     function maskPhone(phone) {
         if (!phone) return '暂无';
-        if (isSuper) return phone;
+        if (currentUser.role === 'super') return phone;
         return phone.slice(0,3) + '****' + phone.slice(-4);
     }
     function maskCoreEnterprise(name) {
         if (!name) return '暂无';
-        if (isSuper) return name;
+        if (currentUser.role === 'super') return name;
         if (name.length <= 2) return '**';
         return name.slice(0,2) + '***';
     }
-    function handleCall(phone, leadName) {
+
+    // 记录事件（拨打、导航）
+    async function logEvent(leadRank, eventType) {
+        await supabase.from('events').insert({
+            user_id: currentUser.id,
+            lead_rank: leadRank,
+            event_type: eventType
+        });
+    }
+
+    function handleCall(phone, leadName, leadRank) {
         if (!phone) return;
-        if (isSuper) {
+        logEvent(leadRank, 'call');
+        if (currentUser.role === 'super') {
             window.location.href = `tel:${phone}`;
         } else {
-            const confirmMsg = `即将拨打 ${leadName} 的号码：${phone}\n\n确认拨号吗？`;
-            if (confirm(confirmMsg)) {
+            if (confirm(`即将拨打 ${leadName} 的号码：${phone}\n\n确认拨号吗？`)) {
                 window.location.href = `tel:${phone}`;
             }
         }
     }
 
-    // 数据管理
-    function getUserDataKey() { return `trade_map_followup_${currentUsername}`; }
-    function loadUserData() { return JSON.parse(localStorage.getItem(getUserDataKey())) || {}; }
-    function saveUserData(data) { localStorage.setItem(getUserDataKey(), JSON.stringify(data)); }
-
-    let map, markers = [], allLeads = [];
-    let currentIndustry = '全部';
-    let currentStatusFilter = '全部';
-
-    // 高德导航
-    function navigateToAmap(lat, lng, name) {
+    function navigateToAmap(lat, lng, name, leadRank) {
         if (!lat || !lng) return;
+        logEvent(leadRank, 'navigate');
         const encodedName = encodeURIComponent(name || '目标位置');
         window.location.href = `https://uri.amap.com/navigation?to=${lng},${lat}&toName=${encodedName}&mode=car&callnative=1`;
     }
 
-    // 弹窗构建
-    function buildPopupHtml(lead, userData) {
+    // ---------- 数据操作 ----------
+    async function loadOpportunities() {
+        const { data, error } = await supabase
+            .from('opportunities')
+            .select('*')
+            .order('rank', { ascending: true });
+        if (error) throw error;
+        return data;
+    }
+
+    async function loadFollowups() {
+        const { data, error } = await supabase
+            .from('followups')
+            .select('lead_rank, status, remark, remind_date')
+            .eq('user_id', currentUser.id);
+        if (error) throw error;
+        const map = {};
+        data.forEach(f => {
+            map[f.lead_rank] = {
+                status: f.status,
+                remark: f.remark || '',
+                remindDate: f.remind_date
+            };
+        });
+        return map;
+    }
+
+    async function upsertFollowup(leadRank, updateData) {
+        const { error } = await supabase
+            .from('followups')
+            .upsert({
+                user_id: currentUser.id,
+                lead_rank: leadRank,
+                ...updateData,
+                updated_at: new Date()
+            }, { onConflict: 'user_id, lead_rank' });
+        if (error) console.error('更新跟进记录失败', error);
+    }
+
+    async function updateStatus(rank, newStatus) {
+        await upsertFollowup(rank, { status: newStatus });
+        userFollowups[rank] = { ...userFollowups[rank], status: newStatus };
+        renderLeadList();
+        renderMarkers();
+    }
+
+    async function editRemark(rank) {
+        const currentRemark = userFollowups[rank]?.remark || '';
+        const newRemark = prompt('请输入备注（可记录沟通要点、联系人信息等）', currentRemark);
+        if (newRemark !== null) {
+            await upsertFollowup(rank, { remark: newRemark });
+            userFollowups[rank] = { ...userFollowups[rank], remark: newRemark };
+            renderLeadList();
+        }
+    }
+
+    async function setRemind(rank) {
+        const currentRemind = userFollowups[rank]?.remindDate || '';
+        const newRemind = prompt('请输入提醒日期（格式：2025-06-10）', currentRemind);
+        if (newRemind && /^\d{4}-\d{2}-\d{2}$/.test(newRemind)) {
+            await upsertFollowup(rank, { remind_date: newRemind });
+            userFollowups[rank] = { ...userFollowups[rank], remindDate: newRemind };
+            renderLeadList();
+            alert(`已设置 ${newRemind} 提醒`);
+        } else if (newRemind) {
+            alert('日期格式应为 YYYY-MM-DD');
+        }
+    }
+
+    // ---------- 地图与UI渲染 ----------
+    function buildPopupHtml(lead) {
         const starIcon = lead.star ? '⭐' : '';
-        const status = userData[lead.rank]?.status || '待跟进';
+        const status = userFollowups[lead.rank]?.status || '待跟进';
         const displayPhone = maskPhone(lead.phone);
         const displayCore = maskCoreEnterprise(lead.core_enterprise);
-        const phoneLink = isSuper 
+        const phoneLink = currentUser.role === 'super'
             ? `<a href="tel:${lead.phone}" class="pop-phone-link">${displayPhone}</a>`
-            : `<a href="javascript:void(0)" onclick="handleCall('${lead.phone}', '${lead.name.replace(/'/g, "\\'")}')" class="pop-phone-link">${displayPhone}</a>`;
+            : `<a href="javascript:void(0)" onclick="handleCall('${lead.phone}', '${lead.name.replace(/'/g, "\\'")}', ${lead.rank})" class="pop-phone-link">${displayPhone}</a>`;
         return `<div style="min-width:220px;">
             <h4>${starIcon} ${lead.name}</h4>
             <div class="pop-row"><strong>排名：</strong>#${lead.rank} | <strong>总分：</strong>${lead.total}分</div>
@@ -168,116 +260,77 @@
             <div class="pop-row"><strong>🏭 核心企业：</strong>${displayCore}</div>
             <div class="pop-row"><strong>🔗 绑定：</strong>${lead.binding}</div>
             <div class="pop-row"><strong>📦 产品：</strong>${lead.product}</div>
-            <div class="pop-row"><a href="javascript:void(0)" onclick="navigateToAmap(${lead.lat}, ${lead.lng}, '${lead.name.replace(/'/g, "\\'")}')" class="pop-nav-link">🗺️ 高德导航</a></div>
+            <div class="pop-row"><a href="javascript:void(0)" onclick="navigateToAmap(${lead.lat}, ${lead.lng}, '${lead.name.replace(/'/g, "\\'")}', ${lead.rank})" class="pop-nav-link">🗺️ 高德导航</a></div>
             <div class="pop-row"><strong>跟进状态：</strong> ${status}</div>
         </div>`;
     }
 
-    // 渲染地图标记
-    function renderMarkers(leads, userData) {
+    function renderMarkers() {
         if (markers.length) markers.forEach(m => map.removeLayer(m));
         markers = [];
-        leads.forEach(lead => {
+        allLeads.forEach(lead => {
             const color = lead.priority === 'S级' ? '#e53935' : '#ffa726';
             const radius = lead.priority === 'S级' ? 8 : 6;
             const m = L.circleMarker([lead.lat, lead.lng], {radius, color, fillColor:color, fillOpacity:0.7, weight: lead.star ? 2 : 1});
-            m.bindPopup(buildPopupHtml(lead, userData));
+            m.bindPopup(buildPopupHtml(lead));
             m._leadData = lead;
             m.addTo(map);
             markers.push(m);
         });
     }
 
-    // 跟进状态、备注、提醒
-    function updateStatus(rank, newStatus) {
-        let userData = loadUserData();
-        if (!userData[rank]) userData[rank] = {};
-        userData[rank].status = newStatus;
-        saveUserData(userData);
-        renderLeadList();
-        renderMarkers(allLeads, loadUserData());
-    }
-    function editRemark(rank) {
-        let userData = loadUserData();
-        const currentRemark = userData[rank]?.remark || '';
-        const newRemark = prompt('请输入备注（可记录沟通要点、联系人信息等）', currentRemark);
-        if (newRemark !== null) {
-            if (!userData[rank]) userData[rank] = {};
-            userData[rank].remark = newRemark;
-            saveUserData(userData);
-            renderLeadList();
-        }
-    }
-    function setRemind(rank) {
-        let userData = loadUserData();
-        const currentRemind = userData[rank]?.remindDate || '';
-        const newRemind = prompt('请输入提醒日期（格式：2025-06-10）', currentRemind);
-        if (newRemind && /^\d{4}-\d{2}-\d{2}$/.test(newRemind)) {
-            if (!userData[rank]) userData[rank] = {};
-            userData[rank].remindDate = newRemind;
-            saveUserData(userData);
-            renderLeadList();
-            alert(`已设置 ${newRemind} 提醒`);
-        } else if (newRemind) {
-            alert('日期格式应为 YYYY-MM-DD');
-        }
-    }
-
-    // 渲染商机列表
     function renderLeadList() {
-        const userData = loadUserData();
         const searchTerm = document.getElementById('search').value.toLowerCase();
         let filtered = allLeads.filter(l => currentIndustry === '全部' || l.industry === currentIndustry);
-        
         if (currentStatusFilter !== '全部') {
             if (currentStatusFilter === '今日提醒') {
                 const today = new Date().toISOString().slice(0,10);
-                filtered = filtered.filter(l => userData[l.rank]?.remindDate === today);
+                filtered = filtered.filter(l => userFollowups[l.rank]?.remindDate === today);
             } else {
-                filtered = filtered.filter(l => (userData[l.rank]?.status || '待跟进') === currentStatusFilter);
+                filtered = filtered.filter(l => (userFollowups[l.rank]?.status || '待跟进') === currentStatusFilter);
             }
         }
         if (searchTerm) {
             filtered = filtered.filter(l => l.name.toLowerCase().includes(searchTerm) || l.core_enterprise.toLowerCase().includes(searchTerm) || l.product.toLowerCase().includes(searchTerm) || l.industry.toLowerCase().includes(searchTerm));
         }
         document.getElementById('lead-count').textContent = `显示 ${filtered.length} 条商机`;
-        
+
         markers.forEach(m => {
             const lead = m._leadData;
             let visible = (currentIndustry === '全部' || lead.industry === currentIndustry);
             if (currentStatusFilter !== '全部') {
                 if (currentStatusFilter === '今日提醒') {
                     const today = new Date().toISOString().slice(0,10);
-                    visible = visible && (userData[lead.rank]?.remindDate === today);
+                    visible = visible && (userFollowups[lead.rank]?.remindDate === today);
                 } else {
-                    visible = visible && (userData[lead.rank]?.status || '待跟进') === currentStatusFilter;
+                    visible = visible && (userFollowups[lead.rank]?.status || '待跟进') === currentStatusFilter;
                 }
             }
             if (visible && searchTerm) visible = lead.name.toLowerCase().includes(searchTerm) || lead.core_enterprise.toLowerCase().includes(searchTerm) || lead.product.toLowerCase().includes(searchTerm) || lead.industry.toLowerCase().includes(searchTerm);
             if (visible) { if (!map.hasLayer(m)) m.addTo(map); } else { if (map.hasLayer(m)) map.removeLayer(m); }
         });
-        
+
         const container = document.getElementById('lead-list');
         container.innerHTML = filtered.map(l => {
             const starBadge = l.star ? '<span class="lc-badge badge-star">⭐背书</span>' : '';
             const priBadge = l.priority === 'S级' ? '<span class="lc-badge badge-s">S级</span>' : '<span class="lc-badge badge-a">A级</span>';
             const willBadge = l.willingness === '强' ? '<span class="lc-badge badge-strong">强意愿</span>' : '<span class="lc-badge badge-mid">中意愿</span>';
-            const status = userData[l.rank]?.status || '待跟进';
-            const remark = userData[l.rank]?.remark || '';
-            const remindDate = userData[l.rank]?.remindDate || '';
+            const status = userFollowups[l.rank]?.status || '待跟进';
+            const remark = userFollowups[l.rank]?.remark || '';
+            const remindDate = userFollowups[l.rank]?.remindDate || '';
             const statusOptions = ['待跟进','已联系','有意向','已签约','已放款','无效'];
             const displayPhone = maskPhone(l.phone);
             const displayCore = maskCoreEnterprise(l.core_enterprise);
-            const phoneAction = isSuper 
+            const phoneAction = currentUser.role === 'super'
                 ? `<a href="tel:${l.phone}" onclick="event.stopPropagation()">📞 ${displayPhone}</a>`
-                : `<a href="javascript:void(0)" onclick="event.stopPropagation(); handleCall('${l.phone}', '${l.name.replace(/'/g, "\\'")}')">📞 ${displayPhone}</a>`;
+                : `<a href="javascript:void(0)" onclick="event.stopPropagation(); handleCall('${l.phone}', '${l.name.replace(/'/g, "\\'")}', ${l.rank})">📞 ${displayPhone}</a>`;
             return `<div class="lead-card ${l.priority === 'S级' ? 'S' : 'A'}" onclick="flyToLead(${l.lat},${l.lng},'${l.name.replace(/'/g,"\\'")}')">
                 <div class="lc-top"><div class="lc-name">#${l.rank} ${l.name}</div><div class="lc-badges">${starBadge}${priBadge}${willBadge}</div></div>
                 <div class="lc-info"><span>🏭 ${l.industry}</span><span>💰 ${l.capital}万</span><span>📊 ${l.total}分</span></div>
                 <div class="lc-core">⭐ 核心企业：${displayCore}</div>
                 <div class="lc-actions">
                     ${phoneAction}
-                    <a href="javascript:void(0)" onclick="event.stopPropagation(); navigateToAmap(${l.lat}, ${l.lng}, '${l.name.replace(/'/g, "\\'")}')">🗺️ 导航</a>
+                    <a href="javascript:void(0)" onclick="event.stopPropagation(); navigateToAmap(${l.lat}, ${l.lng}, '${l.name.replace(/'/g, "\\'")}', ${l.rank})">🗺️ 导航</a>
                 </div>
                 <div class="lc-followup" onclick="event.stopPropagation()">
                     <select class="status-select" data-rank="${l.rank}" onchange="updateStatus(${l.rank}, this.value)">
@@ -288,10 +341,10 @@
                 </div>
             </div>`;
         }).join('');
-        updateStats(filtered, userData);
+        updateStats(filtered);
     }
-    
-    function updateStats(filtered, userData) {
+
+    function updateStats(filtered) {
         document.getElementById('stat-total').innerText = filtered.length;
         document.getElementById('stat-s').innerText = filtered.filter(l=>l.priority==='S级').length;
         document.getElementById('stat-star').innerText = filtered.filter(l=>l.star).length;
@@ -299,10 +352,10 @@
         let avg = filtered.length ? Math.round(filtered.reduce((s,l)=>s+l.total,0)/filtered.length) : 0;
         document.getElementById('stat-avg').innerText = avg;
         const today = new Date().toISOString().slice(0,10);
-        const todayCount = filtered.filter(l => userData[l.rank]?.remindDate === today).length;
+        const todayCount = filtered.filter(l => userFollowups[l.rank]?.remindDate === today).length;
         document.getElementById('stat-today').innerText = todayCount;
     }
-    
+
     function setIndustry(industry) {
         currentIndustry = industry;
         document.querySelectorAll('.industry-filter-item').forEach(el => {
@@ -311,7 +364,7 @@
         });
         renderLeadList();
     }
-    
+
     function setStatusFilter(status) {
         currentStatusFilter = status;
         document.querySelectorAll('.status-filter-item').forEach(el => {
@@ -320,7 +373,7 @@
         });
         renderLeadList();
     }
-    
+
     window.flyToLead = function(lat,lng,name) {
         map.flyTo([lat,lng], 14, {duration:0.6});
         setTimeout(() => markers.forEach(m => { if(m._leadData.name === name) m.openPopup(); }), 700);
@@ -332,19 +385,19 @@
     window.updateStatus = updateStatus;
     window.editRemark = editRemark;
     window.setRemind = setRemind;
-    
-    // 导出CSV (仅超级账号)
-    function exportToCSV() {
-        if (!isSuper) {
+    window.navigateToAmap = navigateToAmap;
+
+    // 导出CSV（仅超级用户）
+    async function exportToCSV() {
+        if (currentUser.role !== 'super') {
             alert('只有超级账号才能导出数据');
             return;
         }
-        const userData = loadUserData();
         const searchTerm = document.getElementById('search').value.toLowerCase();
         let filtered = allLeads.filter(l => currentIndustry === '全部' || l.industry === currentIndustry);
         if (searchTerm) filtered = filtered.filter(l => l.name.toLowerCase().includes(searchTerm) || l.core_enterprise.toLowerCase().includes(searchTerm) || l.product.toLowerCase().includes(searchTerm) || l.industry.toLowerCase().includes(searchTerm));
         const rows = filtered.map(l => {
-            const ud = userData[l.rank] || {};
+            const ud = userFollowups[l.rank] || {};
             return {
                 "排名": l.rank,
                 "企业名称": l.name,
@@ -365,7 +418,7 @@
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.href = url;
-        link.setAttribute("download", `商机跟进_${currentUsername}_${new Date().toISOString().slice(0,10)}.csv`);
+        link.setAttribute("download", `商机跟进_${currentUser.username}_${new Date().toISOString().slice(0,10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -376,9 +429,8 @@
         const rows = data.map(obj => headers.map(header => JSON.stringify(obj[header] || "")).join(","));
         return [headers.join(","), ...rows].join("\n");
     }
-    window.exportToCSV = exportToCSV;
-    
-    // 地图初始化（真实街道地图）
+
+    // 地图初始化
     function initMap() {
         map = L.map('map').setView([39.9042, 116.4074], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -388,25 +440,19 @@
         }).addTo(map);
         if(window.innerWidth <= 780) map.zoomControl.setPosition('bottomright');
         window.addEventListener('resize', () => map.invalidateSize());
-        
-        // 可选集群示意
-        const clusters = [
-            {name:"京津冀装备集群",lat:39.9,lng:116.4,radius:80000},
-        ];
-        clusters.forEach(c => {
-            L.circle([c.lat,c.lng], {radius:c.radius, color:"#f47738", weight:1.5, dashArray:'5 5', fill:false}).addTo(map).bindTooltip(c.name);
-        });
+        // 示例集群圈
+        L.circle([39.9,116.4], {radius:80000, color:"#f47738", weight:1.5, dashArray:'5 5', fill:false}).addTo(map).bindTooltip("京津冀装备集群");
     }
-    
-    // 加载商机JSON
-    async function loadData() {
+
+    // 初始化页面
+    async function init() {
         try {
-            const response = await fetch('data/opportunities.json');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            if (!data || !data.leads || !Array.isArray(data.leads)) throw new Error('数据格式错误');
-            allLeads = data.leads;
-            
+            currentUser = await getCurrentUser();
+            const [opportunities, followups] = await Promise.all([loadOpportunities(), loadFollowups()]);
+            allLeads = opportunities;
+            userFollowups = followups;
+
+            // 动态生成行业筛选按钮
             const industries = [...new Set(allLeads.map(l => l.industry).filter(Boolean))];
             const industryBar = document.getElementById('industryFilterBar');
             industries.forEach(ind => {
@@ -417,21 +463,20 @@
                 span.onclick = () => setIndustry(ind);
                 industryBar.appendChild(span);
             });
-            
+
             document.getElementById('loadingIndicator').style.display = 'none';
             document.getElementById('app').style.display = 'flex';
             document.getElementById('legend2').style.display = 'block';
-            if (!map) initMap();
-            const userData = loadUserData();
-            renderMarkers(allLeads, userData);
+            initMap();
+            renderMarkers();
             renderLeadList();
-            
-            if (isSuper) {
+
+            if (currentUser.role === 'super') {
                 document.getElementById('exportBtn').style.display = 'inline-block';
                 document.getElementById('exportBtn').onclick = exportToCSV;
             }
-            
-            // 动态添加状态筛选栏（带分隔线）
+
+            // 添加状态筛选栏（带分隔线）
             const statusBarHtml = `
                 <hr style="margin: 6px 10px; border-color: #2a4055;">
                 <div class="status-filter" id="statusFilterBar">
@@ -452,18 +497,19 @@
             }
         } catch (err) {
             console.error(err);
-            document.getElementById('loadingIndicator').innerHTML = '❌ 数据加载失败，请刷新重试<br><small>' + err.message + '</small>';
+            document.getElementById('loadingIndicator').innerHTML = '❌ 初始化失败，请重新登录<br>' + err.message;
+            setTimeout(() => { window.location.href = 'index.html'; }, 2000);
         }
     }
-    
+
     // 退出登录
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem("trade_map_currentUser");
-        localStorage.removeItem("trade_map_userRole");
-        window.location.href = "index.html";
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        localStorage.clear();
+        window.location.href = 'index.html';
     });
-    
-    loadData();
+
+    init();
 </script>
 </body>
 </html>
