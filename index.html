@@ -17,7 +17,8 @@
         .input-group label { display: block; font-size: 12px; color: #c8d6e5; margin-bottom: 6px; }
         .input-group input { width: 100%; padding: 12px 14px; background: #112233; border: 1px solid #1e3044; border-radius: 30px; color: #fff; font-size: 14px; outline: none; }
         .input-group input:focus { border-color: #4fc3f7; }
-        .auth-btn { width: 100%; padding: 12px; background: #1a73e8; border: none; border-radius: 40px; color: white; font-size: 16px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .auth-btn { width: 100%; padding: 12px; background: #1a73e8; border: none; border-radius: 40px; color: white; font-size: 16px; font-weight: bold; margin-top: 10px; cursor: pointer; transition: opacity 0.2s; }
+        .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .error-msg { color: #e53935; font-size: 12px; margin-top: 12px; min-height: 30px; }
         .info-note { font-size: 11px; color: #7a9bb5; margin-top: 20px; }
     </style>
@@ -51,7 +52,6 @@
     const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
     
-    // 检测 SDK 是否加载成功
     if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
         alert('Supabase SDK 加载失败，请刷新页面重试');
         throw new Error('Supabase SDK 未正确加载');
@@ -72,23 +72,34 @@
     loginTab.addEventListener('click', showLogin);
     registerTab.addEventListener('click', showRegister);
 
-    // 辅助函数：将普通用户名转换为 email 格式（唯一且合法）
+    // 辅助函数：将普通用户名转换为 email 格式
     function toEmail(username) {
         return username.toLowerCase().replace(/[^a-z0-9]/g, '') + '@trade.local';
     }
 
+    // 防重复提交标志
+    let isRegistering = false;
+
     // 注册
-    document.getElementById('doRegisterBtn').addEventListener('click', async () => {
+    const registerBtn = document.getElementById('doRegisterBtn');
+    registerBtn.addEventListener('click', async () => {
+        if (isRegistering) return;
         const username = document.getElementById('regUsername').value.trim();
         const password = document.getElementById('regPassword').value.trim();
         const invite = document.getElementById('regInviteCode').value.trim();
         const errorDiv = document.getElementById('regError');
+        
         if (!username || !password) { errorDiv.innerText = '用户名/密码不能为空'; return; }
         let role = null;
         if (invite === NORMAL_INVITE) role = 'normal';
         else if (invite === SUPER_INVITE) role = 'super';
         else { errorDiv.innerText = '邀请码错误'; return; }
+        
         const email = toEmail(username);
+        isRegistering = true;
+        registerBtn.disabled = true;
+        errorDiv.innerText = '⏳ 注册中...';
+        
         try {
             const { data, error } = await supabase.auth.signUp({
                 email: email,
@@ -96,8 +107,14 @@
                 options: { data: { role: role } }
             });
             if (error) {
-                if (error.message.includes('already registered')) errorDiv.innerText = '用户名已存在';
-                else errorDiv.innerText = error.message;
+                // 处理速率限制错误
+                if (error.message && error.message.toLowerCase().includes('rate limit')) {
+                    errorDiv.innerText = '注册请求过于频繁，请等待 1-2 分钟后重试';
+                } else if (error.message.includes('already registered')) {
+                    errorDiv.innerText = '用户名已存在';
+                } else {
+                    errorDiv.innerText = error.message;
+                }
                 return;
             }
             errorDiv.innerText = '注册成功！请登录';
@@ -108,20 +125,31 @@
         } catch (err) {
             console.error(err);
             errorDiv.innerText = '网络错误，请稍后重试';
+        } finally {
+            isRegistering = false;
+            registerBtn.disabled = false;
+            // 如果错误信息还显示“注册中...”，清空
+            if (errorDiv.innerText === '⏳ 注册中...') errorDiv.innerText = '';
         }
     });
 
-    // 登录
-    document.getElementById('doLoginBtn').addEventListener('click', async () => {
+    // 登录（也可添加防重复，但速率限制没那么严格）
+    let isLoggingIn = false;
+    const loginBtn = document.getElementById('doLoginBtn');
+    loginBtn.addEventListener('click', async () => {
+        if (isLoggingIn) return;
         const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
         const errorDiv = document.getElementById('loginError');
         if (!username || !password) { errorDiv.innerText = '请输入用户名和密码'; return; }
         const email = toEmail(username);
+        isLoggingIn = true;
+        loginBtn.disabled = true;
+        errorDiv.innerText = '⏳ 登录中...';
         try {
             const { data, error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) { errorDiv.innerText = '用户名或密码错误'; return; }
-            // 获取用户角色
+            // 获取角色
             const { data: roleData, error: roleError } = await supabase
                 .from('user_roles')
                 .select('role')
@@ -138,6 +166,10 @@
         } catch (err) {
             console.error(err);
             errorDiv.innerText = '网络错误，请检查网络连接后重试';
+        } finally {
+            isLoggingIn = false;
+            loginBtn.disabled = false;
+            if (errorDiv.innerText === '⏳ 登录中...') errorDiv.innerText = '';
         }
     });
 
