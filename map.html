@@ -104,10 +104,17 @@
 <div id="loadingIndicator" class="loading-overlay">📡 正在加载商机数据...</div>
 
 <script>
+(function() {
     // ==================== Supabase 配置 ====================
     const SUPABASE_URL = 'https://lcnwkdorftzagvvejeer.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjbndrZG9yZnR6YWd2dmVqZWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NjE2ODMsImV4cCI6MjA5NjMzNzY4M30.tXUnUfENrRa7eg8HFkzjGtzevUwthq8skzyU2W_Mhmc';
-    const supabase = supabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // 检测 SDK 是否加载成功
+    if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
+        alert('Supabase SDK 加载失败，请刷新页面重试');
+        throw new Error('Supabase SDK 未正确加载');
+    }
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ---------- 用户信息 ----------
     let currentUser = null;      // { id, username, role }
@@ -147,11 +154,15 @@
 
     // 记录事件（拨打、导航）
     async function logEvent(leadRank, eventType) {
-        await supabase.from('events').insert({
-            user_id: currentUser.id,
-            lead_rank: leadRank,
-            event_type: eventType
-        });
+        try {
+            await supabase.from('events').insert({
+                user_id: currentUser.id,
+                lead_rank: leadRank,
+                event_type: eventType
+            });
+        } catch (e) {
+            console.warn('事件记录失败', e);
+        }
     }
 
     function handleCall(phone, leadName, leadRank) {
@@ -510,6 +521,7 @@
     });
 
     init();
+})();
 </script>
 </body>
 </html>
